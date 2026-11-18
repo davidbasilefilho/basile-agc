@@ -232,6 +232,66 @@ describe("read-only release policy with real Git DAGs", () => {
     expect(old["config.agc"]).not.toBe(current["config.agc"]);
   });
 
+  test("historical asset names use exact three versus four file trees, not working files", () => {
+    for (const name of ["manifest.json", "SHA256SUMS"])
+      writeFileSync(join(fixture.path, "generated", name), "fixture\n");
+    fixture.git(["add", "generated"]);
+    const three = fixture.commit("three assets", "2026-01-05T00:00:00Z");
+    writeFileSync(join(fixture.path, "generated", "photo-look.xmp"), "fourth\n");
+    fixture.git(["add", "generated"]);
+    const four = fixture.commit("four assets", "2026-01-06T00:00:00Z");
+    writeFileSync(join(fixture.path, "generated", "untracked.agc"), "not historical\n");
+    expect(Effect.runSync(fixture.repo.generatedAssetNames(three))).toEqual([
+      "SHA256SUMS",
+      "config.agc",
+      "manifest.json",
+    ]);
+    expect(Effect.runSync(fixture.repo.generatedAssetNames(four))).toEqual([
+      "SHA256SUMS",
+      "config.agc",
+      "manifest.json",
+      "photo-look.xmp",
+    ]);
+    expect(Effect.runSync(fixture.repo.generatedAssetNames(fixture.first))).toEqual(["config.agc"]);
+  });
+
+  test("historical asset listing fails closed for missing directories, refs and repositories", () => {
+    fixture.git(["rm", "-r", "generated"]);
+    const absent = fixture.commit("without generated", "2026-01-05T00:00:00Z");
+    expectPolicyFailure(fixture.repo.generatedAssetNames(absent));
+    expectPolicyFailure(fixture.repo.generatedAssetNames("a".repeat(40)));
+    expectPolicyFailure(fixture.repo.generatedAssetNames("HEAD"));
+    expectPolicyFailure(fixture.repo.generatedAssetNames(`${fixture.first}\n`));
+    expectPolicyFailure(
+      new GitRepository(join(fixture.path, "absent")).generatedAssetNames(fixture.first),
+    );
+    const blob = fixture.git(["hash-object", "-w", "--stdin"]);
+    expectPolicyFailure(fixture.repo.generatedAssetNames(blob));
+  });
+
+  test("historical generated listing rejects unsafe byte names rather than quoting or normalizing", () => {
+    for (const name of ["spaces here.agc", "line\nbreak.agc", "café.agc", "__proto__"]) {
+      writeFileSync(join(fixture.path, "generated", name), "fixture\n");
+      fixture.git(["add", "generated"]);
+      const sha = fixture.commit("unsafe name", "2026-01-05T00:00:00Z");
+      expectPolicyFailure(fixture.repo.generatedAssetNames(sha));
+      fixture.git(["rm", "--", `generated/${name}`]);
+    }
+  });
+
+  test("historical generated listing rejects nested trees and symlink modes", () => {
+    mkdirSync(join(fixture.path, "generated", "nested"));
+    writeFileSync(join(fixture.path, "generated", "nested", "file.agc"), "fixture\n");
+    fixture.git(["add", "generated"]);
+    const nested = fixture.commit("nested assets", "2026-01-05T00:00:00Z");
+    expectPolicyFailure(fixture.repo.generatedAssetNames(nested));
+    fixture.git(["rm", "-r", "generated/nested"]);
+    const blob = fixture.git(["rev-parse", `${fixture.first}:generated/config.agc`]);
+    fixture.git(["update-index", "--add", "--cacheinfo", `120000,${blob},generated/link.agc`]);
+    const link = fixture.commit("symlink asset", "2026-01-06T00:00:00Z");
+    expectPolicyFailure(fixture.repo.generatedAssetNames(link));
+  });
+
   test("historical digest failures and unsafe names are typed and fail closed", () => {
     for (const names of [
       ["../config.agc"],

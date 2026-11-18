@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import baseline from "../data/gcam-92-v14.json";
+import { nativeProfileZip } from "./native-profile";
 import { standaloneXmp } from "./standalone";
 
 /** Options shared by the two output adapters. JPEG quality applies only to GCam. */
@@ -90,19 +91,24 @@ function renderGcam(profile: Profile) {
 }
 
 /** Build artifacts in memory; no device metadata, time or network participates in rendering. */
-export function generate(profile: Profile, target: Target = "all"): ReadonlyMap<string, string> {
+export function generate(
+  profile: Profile,
+  target: Target = "all",
+): ReadonlyMap<string, string | Uint8Array> {
   const selected = parseProfile(profile);
-  const files = new Map<string, string>();
+  const files = new Map<string, string | Uint8Array>();
   if (target === "gcam" || target === "all")
     files.set("Basile-S23-AGC9.2-V14.agc", renderGcam(selected));
-  if (target === "standalone" || target === "all")
+  if (target === "standalone" || target === "all") {
+    files.set("Basile-AGC-Camera-profile.zip", nativeProfileZip(selected.name));
     files.set("Basile-AGC-Camera-photo-look.xmp", standaloneXmp(selected.name));
+  }
   if (!files.size) throw new Error("Unknown adapter");
   files.set(
     "manifest.json",
     JSON.stringify(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         device: "Samsung Galaxy S23 Snapdragon (SM-S911B)",
         profile: selected,
         outputs: Array.from(files, ([file, bytes]) => ({
@@ -110,13 +116,22 @@ export function generate(profile: Profile, target: Target = "all"): ReadonlyMap<
           sha256: createHash("sha256").update(bytes).digest("hex"),
           scope: file.endsWith(".agc")
             ? "AGC9.2 V14.0 curated camera preferences"
-            : "AGC Camera 1.8.6 experimental photo-look subset",
-          ...(file.endsWith(".xmp")
+            : file.endsWith(".zip")
+              ? "AGC Camera 1.8.6 native Profiles v4; neutral photo/portrait/night adjustments"
+              : "Optional Adobe photo-look XMP; not accepted in AGC Camera Profiles",
+          ...(file.endsWith(".zip")
+            ? {
+                importControl: "Adjustments → Profiles → Import; keep the ZIP intact",
+                application:
+                  "Back up current profiles. Applying replaces profile-managed adjustments, lens overrides, LUT selections and tunables. Video and launcher settings are not part of the format.",
+              }
+            : {}),
+          ...(!file.endsWith(".agc")
             ? {
                 launcherIcon: {
                   preferred: "old GCam",
                   application:
-                    "manual in standalone AGC Camera (since 1.8.0); not controlled by XMP",
+                    "manual in standalone AGC Camera (since 1.8.0); not controlled by either preset format",
                 },
               }
             : {}),

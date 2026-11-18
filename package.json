@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "effect": "4.1.4",
+    "fflate": "0.8.3",
     "saxes": "6.0.0"
   },
   "devDependencies": {

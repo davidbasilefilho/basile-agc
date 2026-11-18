@@ -73,3 +73,11 @@ test("validator rejects DTDs", async () => {
     "Failure",
   );
 });
+
+test("validator rejects substituted native ZIP even after its digest is recomputed", async () => {
+  await change("Basile-AGC-Camera-profile.zip", () => "not a ZIP", true);
+  expect(await Effect.runPromise(Effect.result(verifyArtifacts(root)))).toHaveProperty(
+    "_tag",
+    "Failure",
+  );
+});

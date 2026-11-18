@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import { Effect } from "effect";
+import { unzipSync, strFromU8 } from "fflate";
 import { SaxesParser } from "saxes";
 
 type Xml = {
@@ -15,7 +16,11 @@ type Xml = {
 
 type Atomic = string | string[];
 type Baseline = Record<string, Record<string, Atomic>>;
-const names = ["Basile-S23-AGC9.2-V14.agc", "Basile-AGC-Camera-photo-look.xmp"] as const;
+const names = [
+  "Basile-S23-AGC9.2-V14.agc",
+  "Basile-AGC-Camera-photo-look.xmp",
+  "Basile-AGC-Camera-profile.zip",
+] as const;
 const rdf = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}";
 const crs = "{http://ns.adobe.com/camera-raw-settings/1.0/}";
 const xmpNs = "{adobe:ns:meta/}";
@@ -75,13 +80,17 @@ function toError(error: unknown) {
 /** Independently parse published XML, roundtrip typed preferences and verify both SHA-256 digests. */
 export function verifyArtifacts(root: string) {
   return Effect.gen(function* () {
-    const [baseText, profileText, manifestText, agc, xmp] = yield* Effect.all(
+    const [baseText, profileText, manifestText, agc, xmp, archive] = yield* Effect.all(
       [
         file(join(root, "data/gcam-92-v14.json")),
         file(join(root, "data/profile.json")),
         file(join(root, "generated/manifest.json")),
         file(join(root, "generated", names[0])),
         file(join(root, "generated", names[1])),
+        Effect.tryPromise({
+          try: () => readFile(join(root, "generated", names[2])),
+          catch: toError,
+        }),
       ],
       { concurrency: "unbounded" },
     );
@@ -94,7 +103,10 @@ export function verifyArtifacts(root: string) {
           outputs: { file: string; sha256: string; physicalDeviceVerified: boolean }[];
         };
         check(isDeepStrictEqual(profile, report.profile), "Profile mismatch");
-        check(Array.isArray(report.outputs) && report.outputs.length === 2, "Wrong output count");
+        check(
+          Array.isArray(report.outputs) && report.outputs.length === names.length,
+          "Wrong output count",
+        );
         for (const [index, name] of names.entries()) {
           const item = report.outputs.find((r) => r.file === name);
           check(
@@ -104,7 +116,7 @@ export function verifyArtifacts(root: string) {
           check(
             item.sha256 ===
               createHash("sha256")
-                .update(index === 0 ? agc : xmp)
+                .update(index === 0 ? agc : index === 1 ? xmp : archive)
                 .digest("hex"),
             "Artifact digest mismatch",
           );
@@ -157,6 +169,47 @@ export function verifyArtifacts(root: string) {
             profile.name,
           "Wrong preset name",
         );
+        check(archive.byteLength < 64 * 1024, "Unexpected native profile archive size");
+        let members = 0;
+        const unpacked = unzipSync(archive, {
+          filter(entry) {
+            members++;
+            check(
+              entry.name === "Basile.json" &&
+                members === 1 &&
+                entry.originalSize > 0 &&
+                entry.originalSize < 64 * 1024,
+              "Unrecognized native ZIP member",
+            );
+            return true;
+          },
+        });
+        const member = unpacked["Basile.json"];
+        check(members === 1 && member, "Missing native profile");
+        const offsets = {
+          pref_saturation_key: 0,
+          pref_contrast_strength_key: 0,
+          pref_denoise_strength_key: 0,
+          pref_exposure_ev_key: 0,
+          pref_shadows_key: 0,
+          pref_sharpen_strength_key: 0,
+        };
+        const mode = (photo = false) => ({
+          global: photo ? { ...offsets, pref_hdr_mode_key: 1 } : offsets,
+          per_lens: {},
+          tunable_settings: { global: {}, per_lens: {} },
+        });
+        check(
+          isDeepStrictEqual(JSON.parse(strFromU8(member)) as unknown, {
+            format: "GCamAGC-profile",
+            _version: 4,
+            _name: profile.name,
+            photo: mode(true),
+            portrait: mode(),
+            night: mode(),
+          }),
+          "Unexpected native profile settings",
+        );
         return seen.size;
       },
       catch: toError,
@@ -174,7 +227,7 @@ if (import.meta.main) {
         },
         onSuccess: (count) =>
           console.log(
-            `Independent XML and digest checks passed: ${count} typed preferences and one photo XMP.`,
+            `Independent XML and digest checks passed: ${count} typed preferences plus photo XMP and native v4 profile ZIP.`,
           ),
       }),
     ),

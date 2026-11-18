@@ -2,10 +2,11 @@ import { expect, test } from "bun:test";
 
 import { Effect, Exit } from "effect";
 
-import { type Repository } from "../src/release/policy";
+import { PolicyError, type Repository } from "../src/release/policy";
 import {
   assetNames,
   checkedAssets,
+  legacyAssetNames,
   owns,
   publish,
   prune,
@@ -49,7 +50,9 @@ function fixture() {
     timestamp: () => Effect.succeed("20260101T000000Z"),
     isAncestor: () => Effect.succeed(true),
     assertFullHistory: () => Effect.void,
-    assetDigests: () => Effect.succeed(expected),
+    assetDigests: (_sha, names) =>
+      Effect.succeed(Object.fromEntries(names.map((name) => [name, expected[name]!]))),
+    generatedAssetNames: () => Effect.succeed(assetNames),
   };
   const api: ReleaseService = {
     releases: () => Effect.succeed([...records.values()]),
@@ -198,4 +201,91 @@ test("outside Actions production guard fails before I/O", async () => {
   expect(Exit.isFailure(await Effect.runPromiseExit(runProduction("/does-not-exist", {})))).toBe(
     true,
   );
+});
+
+test("legacy three-file preview is pruned only when its exact commit tree predates ZIP", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  const legacy = record(tag, base, true, 2);
+  legacy.assets = legacy.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
+  legacy.body = releaseNotes(tag, base, true, "legacy").body;
+  f.records.set(tag, legacy);
+  const calls: string[] = [];
+  f.repo.generatedAssetNames = (sha) => {
+    calls.push(sha);
+    return Effect.succeed(legacyAssetNames);
+  };
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(calls).toEqual([base]);
+  expect(f.deleted).toEqual([2]);
+  expect(f.refs.get(tag)).toBe(base);
+});
+
+test("missing ZIP in a native-era preview cannot masquerade as a legacy release", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  const legacy = record(tag, base, true, 2);
+  legacy.assets = legacy.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
+  legacy.body = releaseNotes(tag, base, true, "legacy").body;
+  f.records.set(tag, legacy);
+  // Historical tree still has the ZIP: remote omission and old notes prove nothing.
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(f.deleted).toEqual([]);
+});
+
+test("legacy preview with added ZIP or unknown artifact survives", async () => {
+  for (const added of ["Basile-AGC-Camera-profile.zip", "manual.txt"]) {
+    const f = fixture();
+    f.refs.set(tag, base);
+    f.records.set("v1", record("v1", tip));
+    const legacy = record(tag, base, true, 2);
+    legacy.assets = legacy.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
+    legacy.body = releaseNotes(tag, base, true, "legacy").body;
+    legacy.assets.push({
+      name: added,
+      state: "uploaded",
+      digest: expected["manifest.json"]!,
+      uploader: { login: "github-actions[bot]" },
+    });
+    f.records.set(tag, legacy);
+    f.repo.generatedAssetNames = () => Effect.succeed(legacyAssetNames);
+    await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+    expect(f.deleted).toEqual([]);
+  }
+});
+
+test("unknown historical generated layout remains untouched", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  f.records.set(tag, record(tag, base, true, 2));
+  f.repo.generatedAssetNames = () => Effect.succeed([...assetNames, "future.json"]);
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(f.deleted).toEqual([]);
+});
+
+test("historical tree read failures are not interpreted as pre-ZIP history", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  f.records.set(tag, record(tag, base, true, 2));
+  f.repo.generatedAssetNames = () => Effect.fail(new PolicyError({ message: "tree unavailable" }));
+  expect(
+    Exit.isFailure(await Effect.runPromiseExit(prune(f.repo, f.api, "v1", tip, expected))),
+  ).toBe(true);
+  expect(f.deleted).toEqual([]);
+});
+
+test("current stable publication requires all four assets", async () => {
+  const f = fixture();
+  const r = record("v1", tip);
+  r.assets = r.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
+  f.records.set("v1", r);
+  expect(
+    Exit.isFailure(await Effect.runPromiseExit(publish(f.repo, f.api, tip, expected, "v1"))),
+  ).toBe(true);
+  expect(f.deleted).toEqual([]);
+  expect(assetNames).toHaveLength(4);
 });
