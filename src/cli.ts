@@ -52,7 +52,11 @@ function run(args: string[]) {
     for (const [name, data] of files) {
       const dest = join(out, name);
       if (command === "generate") yield* io(() => writeFile(dest, data));
-      else if ((yield* io(() => readFile(dest, "utf8"))) !== data)
+      else if (
+        !(yield* io(() => readFile(dest))).equals(
+          typeof data === "string" ? Buffer.from(data, "utf8") : data,
+        )
+      )
         return yield* Effect.fail(new Error("Generated artifact differs: " + name));
       console.log((command === "generate" ? "Wrote " : "Verified ") + name);
     }

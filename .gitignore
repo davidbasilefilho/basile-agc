@@ -14,3 +14,6 @@ media/
 *.mp4
 *.mov
 *.zip
+
+# Public standalone profile; the archive has only independently authored Basile.json.
+!generated/Basile-AGC-Camera-profile.zip

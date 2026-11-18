@@ -62,6 +62,8 @@ export interface Repository {
   assertFullHistory(): Effect.Effect<void, PolicyError>;
   /** Test commit ancestry, including the identical commit. */
   isAncestor(ancestor: string, descendant: string): Effect.Effect<boolean, PolicyError>;
+  /** List safe regular-file assets from the exact historical generated directory. */
+  generatedAssetNames(sha: string): Effect.Effect<readonly string[], PolicyError>;
   /** Hash bytes of generated assets at the specified historical commit. */
   assetDigests(
     sha: string,
@@ -168,6 +170,39 @@ export class GitRepository implements Repository {
       });
       const result = yield* this.run(["merge-base", "--is-ancestor", ancestor, descendant], [0, 1]);
       return result.exitCode === 0;
+    });
+  }
+
+  /** List exact historical tree entries, rejecting missing directories and unsafe names. */
+  generatedAssetNames(sha: string): Effect.Effect<readonly string[], PolicyError> {
+    return Effect.gen({ self: this }, function* () {
+      yield* checked(() => ensureSha(sha));
+      const { stdout } = yield* this.run(["ls-tree", "-z", `${sha}^{commit}:generated`, "--"]);
+      return yield* checked(() => {
+        // Latin-1 preserves each byte; non-ASCII filenames then fail the allowlist
+        // rather than being replaced, normalized or interpreted as quoted names.
+        const raw = stdout.toString("latin1");
+        if (!raw.endsWith("\0"))
+          throw new PolicyError({ message: "Missing or empty historical generated assets" });
+        const names = new Set<string>();
+        for (const entry of raw.slice(0, -1).split("\0")) {
+          const match = wholeMatch(
+            /^(100644|100755) blob ([0-9a-f]{40})\t([A-Za-z0-9._-]+)$/u,
+            entry,
+          );
+          const name = match?.[3];
+          if (
+            name === undefined ||
+            name === "." ||
+            name === ".." ||
+            name === "__proto__" ||
+            names.has(name)
+          )
+            throw new PolicyError({ message: "Unsafe historical generated tree entry" });
+          names.add(name);
+        }
+        return [...names].sort();
+      });
     });
   }
 

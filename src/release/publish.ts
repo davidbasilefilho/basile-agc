@@ -4,12 +4,14 @@ import { isStableTag, managedMarker, planPrune, prereleaseTag, type Repository }
 
 /** Fixed repository boundary for CI writes. */
 export const repositoryName = "davidbasilefilho/basile-agc";
-/** Only these generated artifacts may be attached. */
-export const assetNames = [
+/** Historical releases before native-profile support contain exactly these files. */
+export const legacyAssetNames = [
   "Basile-S23-AGC9.2-V14.agc",
   "Basile-AGC-Camera-photo-look.xmp",
   "manifest.json",
 ] as const;
+/** Only these generated artifacts may be attached by the current publisher. */
+export const assetNames = [...legacyAssetNames, "Basile-AGC-Camera-profile.zip"] as const;
 /** Sanitized failures never contain credentials or response bodies. */
 export class PublishError extends Data.TaggedError("PublishError")<{ readonly message: string }> {}
 /** Minimum remote asset metadata used in verification. */
@@ -45,10 +47,19 @@ export function requireCondition(ok: unknown, message: string): Effect.Effect<vo
   return ok ? Effect.void : Effect.fail(new PublishError({ message }));
 }
 /** Canonical title/body protect manually edited previews during cleanup. */
-export function releaseNotes(tag: string, sha: string, pre: boolean) {
+export function releaseNotes(
+  tag: string,
+  sha: string,
+  pre: boolean,
+  format: "native" | "legacy" = "native",
+) {
+  const includes =
+    format === "legacy"
+      ? "Includes the GCam camera preset and an experimental, photo-only standalone XMP."
+      : "Includes the GCam camera preset, an experimental native standalone AGC Camera profile ZIP, and an optional photo-look XMP.";
   return {
     title: pre ? `${tag.slice(4, 20)} · ${sha.slice(0, 12)} (preview)` : tag,
-    body: `${pre ? "Prerelease" : "Release"} of the Basile AGC generator at commit \`${sha}\`. Includes the GCam camera preset and an experimental, photo-only standalone XMP. See README and the manifest for device-validation limits.\n\n${pre ? managedMarker(sha) : `<!-- basile-agc:auto-stable:v1:${sha} -->`}\n`,
+    body: `${pre ? "Prerelease" : "Release"} of the Basile AGC generator at commit \`${sha}\`. ${includes} See README and the manifest for device-validation limits.\n\n${pre ? managedMarker(sha) : `<!-- basile-agc:auto-stable:v1:${sha} -->`}\n`,
   };
 }
 function normalizedLines(value: string) {
@@ -183,15 +194,29 @@ export function prune(
       );
       const live = yield* api.byId(candidate.id);
       if (!live) continue;
-      const previewSha = tag.slice(-40),
-        notes = releaseNotes(tag, previewSha, true);
+      const previewSha = tag.slice(-40);
+      // Derive schema from the exact commit's tree, never from remote asset names,
+      // tag dates, or a missing-blob error. Unknown tree layouts remain untouched.
+      const historicalNames = yield* repo.generatedAssetNames(previewSha);
+      const sameNames = (names: readonly string[]) =>
+        historicalNames.length === names.length &&
+        new Set(historicalNames).size === names.length &&
+        names.every((name) => historicalNames.includes(name));
+      const format = sameNames(assetNames)
+        ? "native"
+        : sameNames(legacyAssetNames)
+          ? "legacy"
+          : null;
+      if (format === null) continue;
+      const historicalAssets = format === "native" ? assetNames : legacyAssetNames;
+      const notes = releaseNotes(tag, previewSha, true, format);
       if (
         live.id !== candidate.id ||
         live.immutable !== false ||
         !owns(live, tag, previewSha, true) ||
         live.name !== notes.title ||
         normalizedLines(live.body ?? "") !== normalizedLines(notes.body) ||
-        !checkedAssets(live, yield* repo.assetDigests(previewSha, assetNames)) ||
+        !checkedAssets(live, yield* repo.assetDigests(previewSha, historicalAssets)) ||
         !live.assets.every((a) => a.uploader?.login === "github-actions[bot]") ||
         (yield* api.refSha(tag)) !== previewSha
       )

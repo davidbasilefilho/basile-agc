@@ -3,12 +3,13 @@ import { expect, test } from "bun:test";
 import defaults from "../data/profile.json";
 import { generate, parseProfile } from "../src/generator";
 const profile = parseProfile(defaults);
-test("same input yields exactly the same two artifacts and digest manifest", () => {
+test("same input yields exactly the same three artifacts and digest manifest", () => {
   const first = generate(profile),
     second = generate(profile);
   expect([...first]).toEqual([...second]);
   expect([...first.keys()].sort()).toEqual([
     "Basile-AGC-Camera-photo-look.xmp",
+    "Basile-AGC-Camera-profile.zip",
     "Basile-S23-AGC9.2-V14.agc",
     "manifest.json",
   ]);
@@ -45,7 +46,7 @@ test("unsafe or unrecognized profile fields fail closed", () => {
 
 test("standalone requires manual icon selection rather than an invented XMP preference", () => {
   const result = generate(profile);
-  const manifest = JSON.parse(result.get("manifest.json")!) as {
+  const manifest = JSON.parse(String(result.get("manifest.json")!)) as {
     outputs: { file: string; launcherIcon?: { preferred: string; application: string } }[];
   };
   const xmp = manifest.outputs.find((entry) => entry.file.endsWith(".xmp"))!;
