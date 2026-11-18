@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "device": "Samsung Galaxy S23 Snapdragon (SM-S911B)",
+  "profile": {
+    "name": "Basile",
+    "jpegQuality": 97,
+    "videoHdr": "prefer-where-supported"
+  },
+  "outputs": [
+    {
+      "file": "Basile-S23-AGC9.2-V14.agc",
+      "sha256": "db83de66ec33f5248aeeb4a5d645c455f2301016b0d6d7aa79386cb2846f8347",
+      "scope": "AGC9.2 V14.0 curated camera preferences",
+      "physicalDeviceVerified": false,
+      "videoHdrDefault": "not encoded: no verified HDR video preference or device mode combination"
+    },
+    {
+      "file": "Basile-AGC-Camera-photo-look.xmp",
+      "sha256": "de6b162302ade950a1f119696af055cc19408097180c6bb894fcfb0789756080",
+      "scope": "AGC Camera 1.8.6 experimental photo-look subset",
+      "physicalDeviceVerified": false,
+      "videoHdrDefault": "not encoded: no verified HDR video preference or device mode combination"
+    }
+  ]
+}
