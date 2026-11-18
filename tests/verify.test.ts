@@ -34,8 +34,8 @@ async function change(file: string, mutate: (text: string) => string, fixDigest:
     await writeFile(path, JSON.stringify(manifest));
   }
 }
-test("independent namespace-aware parser verifies all 459 typed preferences and XMP", async () => {
-  expect(await Effect.runPromise(verifyArtifacts(root))).toBe(459);
+test("independent namespace-aware parser verifies all 453 typed preferences and XMP", async () => {
+  expect(await Effect.runPromise(verifyArtifacts(root))).toBe(453);
 });
 test("validator rejects changed bits even when the XML still parses", async () => {
   await change(gcam, (s) => s + "\n", false);

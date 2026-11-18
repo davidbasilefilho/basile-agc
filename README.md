@@ -17,7 +17,7 @@ For the [standalone app](https://play.google.com/store/apps/details?id=com.agc.g
 
 ### GCam 9.2 capture regression
 
-The latest GCam candidate restores both camera-sound opt-outs from the original v15 and its six capture-stream preferences. The crash reported on still capture / video stop is **not yet verified fixed**. Back up first, test a still and short video on the main lens, and use [this comparison](docs/gcam-capture.md) if it persists. The standalone ZIP is unchanged.
+The GCam candidate removes the six capture-stream changes that failed to resolve the reported crash. Both original camera-sound opt-outs stay off in the file; no visual tuning changed. **This is a rollback, not a verified crash fix.** Back up first, test a still and short video on the main lens, and use [this comparison](docs/gcam-capture.md) if it persists. The standalone ZIP is unchanged.
 
 ## Generate, modify, verify
 

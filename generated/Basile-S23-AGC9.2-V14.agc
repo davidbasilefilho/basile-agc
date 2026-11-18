@@ -7,9 +7,6 @@
   <int name="c2api.noise_reduction_mode" value="2" />
   <int name="c2api.tone_mode" value="3" />
   <int name="c2api.viewfinder_noise_reduction_mode" value="3" />
-  <boolean name="camera.pck_analysis_yuv" value="true" />
-  <boolean name="camera.pck_large_yuv" value="true" />
-  <boolean name="camera.pck_reprocessing_yuv" value="true" />
   <boolean name="camera.promote_night_sight" value="true" />
   <boolean name="hdrnet_enabled" value="true" />
   <string name="lib_bb_key">1.828</string>
@@ -404,9 +401,6 @@
   <string name="pref_opmode_video_key">0</string>
   <string name="pref_p3_key">1</string>
   <string name="pref_patch_profile_count_key">3</string>
-  <string name="pref_pckstream_raw_hdrplus">1</string>
-  <string name="pref_pckstream_viewfinder">1</string>
-  <string name="pref_pckstream_yuv_analysis">1</string>
   <string name="pref_qjpg_key">97</string>
   <string name="pref_r_hue_key">0</string>
   <string name="pref_raw_key">0</string>
