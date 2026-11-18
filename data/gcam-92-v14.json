@@ -1,8 +1,5 @@
 {
   "boolean": {
-    "camera.pck_analysis_yuv": "true",
-    "camera.pck_large_yuv": "true",
-    "camera.pck_reprocessing_yuv": "true",
     "camera.promote_night_sight": "true",
     "hdrnet_enabled": "true",
     "pref_awb_switch_key": "false",
@@ -405,9 +402,6 @@
     "pref_opmode_video_key": "0",
     "pref_p3_key": "1",
     "pref_patch_profile_count_key": "3",
-    "pref_pckstream_raw_hdrplus": "1",
-    "pref_pckstream_viewfinder": "1",
-    "pref_pckstream_yuv_analysis": "1",
     "pref_qjpg_key": "97",
     "pref_r_hue_key": "0",
     "pref_raw_key": "0",
