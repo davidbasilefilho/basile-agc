@@ -45,6 +45,9 @@ jobs:
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile --production --ignore-scripts
+      # Publish freshly generated files, never separately uploaded hand-built configs.
+      - run: bun run validate
+      - run: bun run generate
       - run: bun run verify
       - name: Publish and reconcile managed releases
         env:

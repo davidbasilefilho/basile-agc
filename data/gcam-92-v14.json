@@ -1,5 +1,8 @@
 {
   "boolean": {
+    "camera.pck_analysis_yuv": "true",
+    "camera.pck_large_yuv": "true",
+    "camera.pck_reprocessing_yuv": "true",
     "camera.promote_night_sight": "true",
     "hdrnet_enabled": "true",
     "pref_awb_switch_key": "false",
@@ -288,6 +291,8 @@
     "pref_camera_raw_output_key": "0",
     "pref_camera_raw_output_option_available_key": "1",
     "pref_camera_resolution": "full",
+    "pref_camera_single_shot_sound_key": "0",
+    "pref_camera_sounds_key": "0",
     "pref_cct_wb_intensity_key": "1.0",
     "pref_cct_wb_offset_key": "1.0",
     "pref_cct_wb_offset_key_0": "0",
@@ -400,6 +405,9 @@
     "pref_opmode_video_key": "0",
     "pref_p3_key": "1",
     "pref_patch_profile_count_key": "3",
+    "pref_pckstream_raw_hdrplus": "1",
+    "pref_pckstream_viewfinder": "1",
+    "pref_pckstream_yuv_analysis": "1",
     "pref_qjpg_key": "97",
     "pref_r_hue_key": "0",
     "pref_raw_key": "0",
