@@ -6,13 +6,20 @@
   "type": "module",
   "scripts": {
     "check": "bun run format:check && bun run lint && bun run typecheck && bun test",
-    "format": "oxfmt --write .",
-    "format:check": "oxfmt --check .",
+    "format": "bun --bun oxfmt --write .",
+    "format:check": "bun --bun oxfmt --check .",
     "generate": "bun src/cli.ts generate",
-    "lint": "oxlint --type-aware --max-warnings 0 .",
+    "lint": "bun --bun oxlint --type-aware --max-warnings 0 .",
+    "release:ci": "bun src/release/run.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit",
-    "validate": "bun src/cli.ts validate"
+    "typecheck": "bun --bun tsc --noEmit",
+    "validate": "bun src/cli.ts validate",
+    "verify": "bun src/verify.ts",
+    "video:cadence": "bun src/video/cli.ts"
+  },
+  "dependencies": {
+    "effect": "4.1.4",
+    "saxes": "6.0.0"
   },
   "devDependencies": {
     "@types/bun": "1.4.4",
@@ -23,8 +30,7 @@
     "typescript": "7.0.2"
   },
   "engines": {
-    "bun": ">=1.4.4",
-    "node": ">=22.13.0"
+    "bun": ">=1.4.4"
   },
   "packageManager": "bun@1.4.4"
 }

@@ -9,21 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.4
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
       - run: bun install --frozen-lockfile
       - run: bun run check
-      - run: bun run generate
+      # Compare the checked-in artifacts before any generation can overwrite drift.
       - run: bun run validate
-      - run: python3 scripts/verify_artifacts.py
-      - run: python3 -m unittest discover -s scripts
-      - run: git diff --exit-code -- generated
-      - name: Reject untracked generated files
-        run: test -z "$(git ls-files --others --exclude-standard -- generated)"
+      - run: bun run verify
+      - run: bun run generate --out "${{ runner.temp }}/basile-reproduced"
+      - run: bun run validate --out "${{ runner.temp }}/basile-reproduced"
   release:
     name: Publish validated release
     needs: validate
@@ -44,8 +41,12 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - run: python3 scripts/verify_artifacts.py
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile --production --ignore-scripts
+      - run: bun run verify
       - name: Publish and reconcile managed releases
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/publish_ci.py
+        run: bun run release:ci

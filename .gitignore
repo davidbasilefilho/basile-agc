@@ -14,6 +14,3 @@ media/
 *.mp4
 *.mov
 *.zip
-
-__pycache__/
-*.pyc

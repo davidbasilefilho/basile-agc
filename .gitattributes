@@ -1,0 +1,2 @@
+# These camera presets are XML, not Apollo Guidance Computer assembly.
+generated/*.agc linguist-language=XML

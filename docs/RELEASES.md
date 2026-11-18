@@ -1,6 +1,6 @@
 # CI, preview builds and stable releases
 
-**Validation** runs on pushes and pull requests with read-only repository access: frozen Bun install, formatting, type-aware lint, typecheck, unit tests, regeneration, independent XML and SHA-256 checks, release-policy tests and generated-drift detection. A pull request or non-default branch never publishes. The release job runs only after validation succeeded on a push to this repository, checks out that same commit with full history, and verifies the XML and assets again. No deployment, npm publication or signing-key setup is involved.
+**Validation** runs on pushes and pull requests with read-only repository access using Bun, TypeScript and Effect: frozen Bun install, formatting, type-aware lint, typecheck, unit tests, regeneration, independent XML and SHA-256 checks, release-policy tests and generated-drift detection. A pull request or non-default branch never publishes. The release job runs only after validation succeeded on a push to this repository, checks out that same commit with full history, and verifies the XML and assets again. No deployment, npm publication or signing-key setup is involved.
 
 | Trigger                           | Result after validation                                                                          |
 | --------------------------------- | ------------------------------------------------------------------------------------------------ |
