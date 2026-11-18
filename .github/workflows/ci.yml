@@ -1,0 +1,51 @@
+name: Validation
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run generate
+      - run: bun run validate
+      - run: python3 scripts/verify_artifacts.py
+      - run: python3 -m unittest discover -s scripts
+      - run: git diff --exit-code -- generated
+      - name: Reject untracked generated files
+        run: test -z "$(git ls-files --others --exclude-standard -- generated)"
+  release:
+    name: Publish validated release
+    needs: validate
+    if: >-
+      github.repository == 'davidbasilefilho/basile-agc' &&
+      github.event_name == 'push' && github.event.deleted == false &&
+      (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) ||
+       startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: write
+    concurrency:
+      group: basile-agc-release-publication
+      queue: max
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 scripts/verify_artifacts.py
+      - name: Publish and reconcile managed releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish_ci.py

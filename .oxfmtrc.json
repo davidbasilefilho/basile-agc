@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "bracketSameLine": true,
+  "sortImports": true,
+  "sortPackageJson": { "sortScripts": true },
+  "ignorePatterns": ["generated/**", "node_modules/**"]
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "jsdoc", "node"],
+  "jsPlugins": [{ "name": "jsdoc-public", "specifier": "eslint-plugin-jsdoc" }],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "import/no-duplicates": "error",
+    "jsdoc-public/require-jsdoc": [
+      "error",
+      {
+        "publicOnly": { "esm": true, "cjs": false, "window": false },
+        "require": {
+          "FunctionDeclaration": true,
+          "FunctionExpression": true,
+          "ArrowFunctionExpression": true,
+          "ClassDeclaration": true,
+          "MethodDefinition": true
+        },
+        "contexts": [
+          "TSInterfaceDeclaration",
+          "TSTypeAliasDeclaration",
+          "TSEnumDeclaration",
+          "VariableDeclaration"
+        ]
+      }
+    ]
+  },
+  "ignorePatterns": ["generated/**", "node_modules/**", ".tooling-fixtures-*/**"],
+  "overrides": [{ "files": ["tests/**"], "rules": { "jsdoc-public/require-jsdoc": "off" } }]
+}

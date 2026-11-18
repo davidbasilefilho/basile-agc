@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+      xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      crs:PresetType="Normal"
+      crs:HasSettings="True"
+      crs:WhiteBalance="As Shot"
+      crs:Saturation="0"
+      crs:RedHue="0" crs:RedSaturation="0"
+      crs:GreenHue="0" crs:GreenSaturation="0"
+      crs:BlueHue="0" crs:BlueSaturation="0"
+      crs:ShadowTint="0"
+      crs:VignetteAmount="0">
+      <crs:Name><rdf:Alt><rdf:li xml:lang="x-default">Basile</rdf:li></rdf:Alt></crs:Name>
+      <dc:title><rdf:Alt><rdf:li xml:lang="x-default">Basile</rdf:li></rdf:Alt></dc:title>
+      <dc:description><rdf:Alt><rdf:li xml:lang="x-default">Experimental neutral color baseline only; not a native config port. No HDR, video, lens, exposure, sharpening or denoising settings.</rdf:li></rdf:Alt></dc:description>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
