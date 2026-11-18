@@ -6,7 +6,7 @@ This is about BigKaka's **AGC9.2.14 V14.0 GCam mod** on the base Snapdragon S23,
 
 The owner reports that the original worked. The shared crash report identifies an Android `Resources.NotFoundException` while resolving string resource ID `0x0`. This is the immediate exception, **not a mapping to any particular preference** or proof of a broken codec. An empty filename or stream field in a log does not prove that a file did not load. No resource-ID substitution or speculative color, frame-rate, buffer, or HDR change is justified.
 
-The previous mistake was using the curated public subset as the recovery baseline. Use the original from the same build, not the subset. The source-preserving generator validates the preference map but does not sort it, filter it or serialize it anew. On the supplied v15, both a plain round-trip and the explicit sound-off overlay were identical to the original, including all 1,328 preferences, XML types, settings order, metadata and formatting. No private source or generated recovery copy is published. The standalone profile is unaffected.
+The previous mistake was using the curated public subset as the recovery baseline. Use the original from the same build, not the subset. The source-preserving generator validates the preference map but does not sort it, filter it or serialize it anew. On the supplied v15, both a plain round-trip and the explicit sound-off overlay were identical to the original, including all 1,328 preferences, XML types, settings order, metadata and formatting. No private source or private generated recovery copy is published. The current GitHub build instead uses a [separate sanitized public reference](public-reference.md), and is a device-test candidate, not a verified crash fix. The standalone profile is unaffected.
 
 ## Historical comparison, not a six-key spot check
 
@@ -22,7 +22,7 @@ Other omissions serve different purposes. All 37 fixed-address custom patch grou
 
 Only the previous six experimental additions are removed: three boolean flags under `camera.pck_{analysis_yuv,large_yuv,reprocessing_yuv}` and three strings under `pref_pckstream_{raw_hdrplus,viewfinder,yuv_analysis}`. Both original sound controls, `pref_camera_sounds_key` and `pref_camera_single_shot_sound_key`, remain strings with value `0`; they do not mute the audio track of a recording.
 
-The new public output has **453 original preferences, 875 omitted, no inserted or rewritten value** under the default project profile. It equals the pre-experiment 451-key baseline plus the two sound opt-outs. The rollback does not set the six switches to alternate values. If an importer merges, loading the rollback over a previous import might not remove their effective device state. No change was made to the standalone profile, visual tuning, video settings or lens calibration.
+The historical PR #5 rollback had **453 original preferences, 875 omitted, no inserted or rewritten value** under the default project profile. It equals the pre-experiment 451-key baseline plus the two sound opt-outs. The rollback does not set the six switches to alternate values. If an importer merges, loading the rollback over a previous import might not remove their effective device state. No change was made to the standalone profile, visual tuning, video settings or lens calibration.
 
 ## Confirm recovery on the phone
 

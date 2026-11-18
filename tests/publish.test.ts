@@ -7,6 +7,7 @@ import {
   assetNames,
   checkedAssets,
   legacyAssetNames,
+  nativeAssetNames,
   owns,
   publish,
   prune,
@@ -38,6 +39,13 @@ function record(name: string, sha: string, pre = false, id = 1): RemoteRelease {
       uploader: { login: "github-actions[bot]" },
     })),
   };
+}
+function historicalPreview(format: "legacy" | "native") {
+  const names: readonly string[] = format === "legacy" ? legacyAssetNames : nativeAssetNames;
+  const preview = record(tag, base, true, 2);
+  preview.assets = preview.assets.filter((asset) => names.includes(asset.name));
+  preview.body = releaseNotes(tag, base, true, format).body;
+  return { names, preview };
 }
 function fixture() {
   const records = new Map<string, RemoteRelease>(),
@@ -207,10 +215,7 @@ test("legacy three-file preview is pruned only when its exact commit tree predat
   const f = fixture();
   f.refs.set(tag, base);
   f.records.set("v1", record("v1", tip));
-  const legacy = record(tag, base, true, 2);
-  legacy.assets = legacy.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
-  legacy.body = releaseNotes(tag, base, true, "legacy").body;
-  f.records.set(tag, legacy);
+  f.records.set(tag, historicalPreview("legacy").preview);
   const calls: string[] = [];
   f.repo.generatedAssetNames = (sha) => {
     calls.push(sha);
@@ -226,10 +231,8 @@ test("missing ZIP in a native-era preview cannot masquerade as a legacy release"
   const f = fixture();
   f.refs.set(tag, base);
   f.records.set("v1", record("v1", tip));
-  const legacy = record(tag, base, true, 2);
-  legacy.assets = legacy.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
-  legacy.body = releaseNotes(tag, base, true, "legacy").body;
-  f.records.set(tag, legacy);
+  f.records.set(tag, historicalPreview("legacy").preview);
+  f.repo.generatedAssetNames = () => Effect.succeed(nativeAssetNames);
   // Historical tree still has the ZIP: remote omission and old notes prove nothing.
   await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
   expect(f.deleted).toEqual([]);
@@ -240,9 +243,7 @@ test("legacy preview with added ZIP or unknown artifact survives", async () => {
     const f = fixture();
     f.refs.set(tag, base);
     f.records.set("v1", record("v1", tip));
-    const legacy = record(tag, base, true, 2);
-    legacy.assets = legacy.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
-    legacy.body = releaseNotes(tag, base, true, "legacy").body;
+    const { preview: legacy } = historicalPreview("legacy");
     legacy.assets.push({
       name: added,
       state: "uploaded",
@@ -278,14 +279,70 @@ test("historical tree read failures are not interpreted as pre-ZIP history", asy
   expect(f.deleted).toEqual([]);
 });
 
-test("current stable publication requires all four assets", async () => {
+test("untouched native-era previews still prune with their exact original four-file tree and notes", async () => {
+  const f = fixture();
+  const { names, preview } = historicalPreview("native");
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  f.records.set(tag, preview);
+  f.repo.generatedAssetNames = () => Effect.succeed(names);
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(f.deleted).toEqual([2]);
+  expect(f.refs.get(tag)).toBe(base);
+  expect(preview.body).toContain(
+    "Includes the GCam camera preset, an experimental native standalone AGC Camera profile ZIP, and an optional photo-look XMP.",
+  );
+});
+
+test("old native notes and assets cannot downgrade a current five-file preview", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  f.records.set(tag, historicalPreview("native").preview);
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(f.deleted).toEqual([]);
+});
+
+test("adding the SDR file to a historical native preview prevents pruning", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  const { preview } = historicalPreview("native");
+  const sdr = record(tag, base, true, 2).assets.find(
+    (a) => a.name === "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
+  )!;
+  preview.assets.push(sdr);
+  f.records.set(tag, preview);
+  f.repo.generatedAssetNames = () => Effect.succeed(nativeAssetNames);
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(f.deleted).toEqual([]);
+});
+
+test("current stable publication requires all five assets", async () => {
   const f = fixture();
   const r = record("v1", tip);
-  r.assets = r.assets.filter((a) => a.name !== "Basile-AGC-Camera-profile.zip");
+  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14-FHD60-SDR.agc");
   f.records.set("v1", r);
   expect(
     Exit.isFailure(await Effect.runPromiseExit(publish(f.repo, f.api, tip, expected, "v1"))),
   ).toBe(true);
   expect(f.deleted).toEqual([]);
-  expect(assetNames).toHaveLength(4);
+  expect(assetNames).toHaveLength(5);
+});
+
+test("incomplete or invalid current digests fail before publication and pruning", async () => {
+  for (const wrong of [
+    Object.fromEntries(nativeAssetNames.map((name) => [name, expected[name]!])),
+    { ...expected, "manifest.json": "not-a-digest" },
+    { ...expected, "other.agc": "sha256:" + "d".repeat(64) },
+  ]) {
+    const f = fixture();
+    expect(
+      Exit.isFailure(await Effect.runPromiseExit(publish(f.repo, f.api, tip, wrong, "v1"))),
+    ).toBe(true);
+    expect(
+      Exit.isFailure(await Effect.runPromiseExit(prune(f.repo, f.api, "v1", tip, wrong))),
+    ).toBe(true);
+    expect([...f.created, ...f.deleted]).toEqual([]);
+  }
 });

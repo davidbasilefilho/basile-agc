@@ -71,10 +71,6 @@ function run(args: string[]) {
       );
       return;
     }
-    if (target !== "standalone")
-      console.warn(
-        "Public GCam fixture is a historical subset, not a recovery file. Use --source for a faithful GCam config.",
-      );
     const json = yield* io(() => readFile(profile, "utf8"));
     const files = yield* checked(() => generate(parseProfile(JSON.parse(json) as unknown), target));
     if (command === "generate") yield* io(() => mkdir(out, { recursive: true }));
