@@ -17,15 +17,14 @@ For the [standalone app](https://play.google.com/store/apps/details?id=com.agc.g
 
 ## Generate, modify, verify
 
-Install Bun 1.4.4 and Node 24 (used by the JSDoc plugin). From the repository root:
+Install Bun 1.4.4. All project code and tests are TypeScript, executed with Bun. Effect handles the generator CLI, independent verification, private video diagnostics, Git release policy and publisher. From the repository root:
 
 ```sh
 bun install --frozen-lockfile
 bun run generate
 bun run validate
 bun run check
-python3 scripts/verify_artifacts.py
-python3 -m unittest discover -s scripts
+bun run verify
 ```
 
 Edit [data/profile.json](data/profile.json) to change the display name or GCam JPEG quality. Unknown keys, unsafe names, and invalid quality values are rejected. Resolution, stabilization and per-lens calibration come from [the reviewed, typed baseline](data/gcam-92-v14.json), not a guessed conversion table. Changes to capture settings belong there only with target-build evidence. Outputs are deterministic; [the manifest](generated/manifest.json) includes scope and SHA-256 for each.
@@ -36,15 +35,17 @@ bun run validate --target gcam --profile data/profile.json --out /tmp/basile-gca
 bun run generate --target standalone --out /tmp/basile-standalone
 ```
 
-Use a dedicated output directory per target. The CLI does not delete unrelated/stale files. For private recordings, run `python3 scripts/video_cadence.py /path/to/local.mp4` (requires ffprobe). No upload is required.
+Use a dedicated output directory per target. The CLI does not delete unrelated/stale files. For private recordings, run `bun run video:cadence /path/to/local.mp4` (requires ffprobe). No upload is required.
 
 ## Repository
 
 - `src/`: Bun/TypeScript serializer, profile validation, target adapters and CLI
 - `data/`: public authoring inputs; `generated/`: reproducible outputs ready for testing
-- `scripts/`: independent XML/digest verification and metadata-minimizing video timing diagnostics
+- `src/verify.ts`, `src/video/`, `src/release/`: independent XML verification, offline cadence diagnostics, release policy and publication, all in TypeScript with Effect
 - `tests/`: generator, XMP and lint-policy regression tests
-- CI checks a frozen install, Oxfmt, type-aware Oxlint/tsgolint, exported-only JSDoc, TypeScript, Bun/Python tests and generated drift
+- CI checks a frozen install, Oxfmt, type-aware Oxlint/tsgolint, exported-only JSDoc, TypeScript, Bun tests and generated drift
+
+The generated `.agc` extension is required by the camera app. Its contents are XML preferences, not Apollo Guidance Computer assembly; a narrow [Linguist override](.gitattributes) labels only these generated files as XML without altering their bytes.
 
 Do not contribute private photos, videos, original settings dumps, APKs, libraries or third-party presets. Contribute minimized setting diffs and aggregate measurements instead.
 

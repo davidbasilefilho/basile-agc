@@ -1,16 +1,18 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
+import { Effect } from "effect";
+
 import { generate, parseProfile, type Target } from "./generator";
 
 const usage =
   "bun run generate|validate [--target all|gcam|standalone] [--profile FILE] [--out DIRECTORY]";
-async function main(args: string[]) {
+const err = (e: unknown) => (e instanceof Error ? e : new Error("Generation failed"));
+const io = <T>(action: () => Promise<T>) => Effect.tryPromise({ try: action, catch: err });
+const checked = <T>(action: () => T) => Effect.try({ try: action, catch: err });
+
+function parseArgs(args: string[]) {
   const [command, ...rest] = args;
-  if (command === "--help" || command === "-h") {
-    console.log(usage);
-    return;
-  }
   if (command !== "generate" && command !== "validate") throw new Error(usage);
   let target: Target = "all",
     profile = resolve(import.meta.dir, "../data/profile.json"),
@@ -27,25 +29,43 @@ async function main(args: string[]) {
     else if (flag === "--out") out = resolve(value);
     else throw new Error(usage);
   }
-  const model = parseProfile(JSON.parse(await readFile(profile, "utf8")) as unknown);
-  const files = generate(model, target);
-  if (command === "generate") await mkdir(out, { recursive: true });
-  const existing = await readdir(out);
-  if (existing.some((name) => !files.has(name)))
-    throw new Error(
-      "Output directory contains unrelated or stale files. Choose an empty directory; no files were removed.",
-    );
-  for (const [name, data] of files) {
-    const dest = join(out, name);
-    if (command === "generate") await writeFile(dest, data);
-    else if ((await readFile(dest, "utf8")) !== data)
-      throw new Error("Generated artifact differs: " + name);
-    console.log((command === "generate" ? "Wrote " : "Verified ") + name);
-  }
+  return { command, target, profile, out };
 }
-try {
-  await main(Bun.argv.slice(2));
-} catch (error) {
-  console.error(error instanceof Error ? error.message : "Generation failed");
-  process.exitCode = 1;
+
+function run(args: string[]) {
+  return Effect.gen(function* () {
+    if (args.length === 1 && (args[0] === "--help" || args[0] === "-h")) {
+      console.log(usage);
+      return;
+    }
+    const { command, profile, target, out } = yield* checked(() => parseArgs(args));
+    const json = yield* io(() => readFile(profile, "utf8"));
+    const files = yield* checked(() => generate(parseProfile(JSON.parse(json) as unknown), target));
+    if (command === "generate") yield* io(() => mkdir(out, { recursive: true }));
+    const existing = yield* io(() => readdir(out));
+    if (existing.some((name) => !files.has(name)))
+      return yield* Effect.fail(
+        new Error(
+          "Output directory contains unrelated or stale files. Choose an empty directory; no files were removed.",
+        ),
+      );
+    for (const [name, data] of files) {
+      const dest = join(out, name);
+      if (command === "generate") yield* io(() => writeFile(dest, data));
+      else if ((yield* io(() => readFile(dest, "utf8"))) !== data)
+        return yield* Effect.fail(new Error("Generated artifact differs: " + name));
+      console.log((command === "generate" ? "Wrote " : "Verified ") + name);
+    }
+  });
 }
+await Effect.runPromise(
+  run(Bun.argv.slice(2)).pipe(
+    Effect.match({
+      onSuccess: () => {},
+      onFailure: (error) => {
+        console.error(error.message);
+        process.exitCode = 1;
+      },
+    }),
+  ),
+);

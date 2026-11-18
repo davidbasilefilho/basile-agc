@@ -11,7 +11,9 @@ function lintFixture(source: string, typeAware = false) {
     const path = join(directory, "fixture.ts");
     writeFileSync(path, source);
     const result = Bun.spawnSync([
-      resolve("node_modules/.bin/oxlint"),
+      process.execPath,
+      "--bun",
+      "oxlint",
       "--config",
       resolve(".oxlintrc.json"),
       "--no-ignore",
