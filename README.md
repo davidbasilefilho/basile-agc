@@ -15,6 +15,10 @@ Back up your working settings first. For the [GCam V14 release](https://www.cels
 
 For the [standalone app](https://play.google.com/store/apps/details?id=com.agc.gcam), export and keep your current profile as a backup. Go to **Ajustes → Perfis → ⋮ → Import**, select **Basile-AGC-Camera-profile.zip** without extracting it, then select **Basile**. Applying it replaces profile-managed lens/tuning overrides and LUT selection. The optional XMP is **not** accepted in Perfis. For the old GCam launcher icon, use the app’s desktop-icon setting. If testing HDR video, select a supported HDR mode in the app, reopen it, and inspect the recorded file. See [manual controls and limits](docs/standalone.md). If a supported combination cannot be found, record it as unavailable; do not relabel an SDR recording.
 
+### GCam 9.2 capture regression
+
+The latest GCam candidate restores both camera-sound opt-outs from the original v15 and its six capture-stream preferences. The crash reported on still capture / video stop is **not yet verified fixed**. Back up first, test a still and short video on the main lens, and use [this comparison](docs/gcam-capture.md) if it persists. The standalone ZIP is unchanged.
+
 ## Generate, modify, verify
 
 Install Bun 1.4.4. All project code and tests are TypeScript, executed with Bun. Effect handles the generator CLI, independent verification, private video diagnostics, Git release policy and publisher. From the repository root:

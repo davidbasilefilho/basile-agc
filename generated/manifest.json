@@ -9,7 +9,7 @@
   "outputs": [
     {
       "file": "Basile-S23-AGC9.2-V14.agc",
-      "sha256": "db83de66ec33f5248aeeb4a5d645c455f2301016b0d6d7aa79386cb2846f8347",
+      "sha256": "da92cc89b93b5f7b8237f684637df9795e1662ac6878ba7a64c8ea67044ee486",
       "scope": "AGC9.2 V14.0 curated camera preferences",
       "physicalDeviceVerified": false,
       "videoHdrDefault": "not encoded: no verified HDR video preference or device mode combination"
