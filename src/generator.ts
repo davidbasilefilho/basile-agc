@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
-import baseline from "../data/gcam-92-v14.json";
+import { SaxesParser } from "saxes";
+
+import { fromOriginal } from "./lossless";
 import { nativeProfileZip } from "./native-profile";
 import { standaloneXmp } from "./standalone";
 
@@ -49,45 +52,39 @@ function escapeXml(text: string) {
     .replaceAll("'", "&apos;");
 }
 
-function renderGcam(profile: Profile) {
-  const lines: [string, string][] = [];
-  const seen = new Set<string>();
-  function append(key: string, line: string) {
-    if (!/^[a-zA-Z0-9_.]+$/.test(key) || seen.has(key))
-      throw new Error("Invalid or duplicate preference: " + key);
-    seen.add(key);
-    lines.push([key, line]);
-  }
-  for (const [key, value] of Object.entries(baseline.string)) {
-    let val = value;
-    if (/^lib_profile_title_key(?:_p0_[0-5])?$/.test(key)) val = profile.name;
-    if (key === "pref_qjpg_key") val = String(profile.jpegQuality);
-    append(key, `  <string name="${key}">${escapeXml(val)}</string>`);
-  }
-  for (const [type, values] of [
-    ["boolean", baseline.boolean],
-    ["int", baseline.int],
-  ] as const) {
-    for (const [key, value] of Object.entries(values)) {
-      if (!(type === "boolean" ? /^(true|false)$/ : /^-?\d+$/).test(value))
-        throw new Error("Bad scalar: " + key);
-      append(key, `  <${type} name="${key}" value="${value}" />`);
-    }
-  }
-  for (const [key, members] of Object.entries(baseline.set)) {
-    if (new Set(members).size !== members.length || !members.length)
-      throw new Error("Invalid string set: " + key);
-    append(
-      key,
-      `  <set name="${key}">\n${members.map((v) => `    <string>${escapeXml(v)}</string>`).join("\n")}\n  </set>`,
-    );
-  }
-  lines.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
-  return (
-    '<?xml version="1.0" encoding="utf-8"?>\n<map>\n' +
-    lines.map(([, line]) => line).join("\n") +
-    "\n</map>\n"
+function loadGcam(profile: Profile) {
+  const source = readFileSync(new URL("../data/gcam-92-v14.xml", import.meta.url));
+  const changeName = profile.name !== "Basile";
+  const changeQuality = profile.jpegQuality !== 97;
+  if (!changeName && !changeQuality) return source;
+  const xml = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+    fromOriginal(source),
   );
+  const parser = new SaxesParser();
+  let depth = 0,
+    start = 0,
+    replacement: string | undefined;
+  const patches: { start: number; end: number; replacement: string }[] = [];
+  parser.on("opentag", (tag) => {
+    if (++depth !== 2 || tag.name !== "string" || tag.isSelfClosing) return;
+    const key = tag.attributes.name ?? "";
+    if (changeName && /^lib_profile_title_key(?:_p0_[0-5])?$/.test(key))
+      replacement = escapeXml(profile.name);
+    if (changeQuality && key === "pref_qjpg_key") replacement = String(profile.jpegQuality);
+    start = parser.position;
+  });
+  parser.on("closetag", () => {
+    if (depth-- !== 2 || replacement === undefined) return;
+    const end = xml.lastIndexOf("</", parser.position - 1);
+    if (end < start) throw new Error("Could not scope public photo option");
+    patches.push({ start, end, replacement });
+    replacement = undefined;
+  });
+  parser.write(xml).close();
+  let next = xml;
+  for (const patch of patches.reverse())
+    next = next.slice(0, patch.start) + patch.replacement + next.slice(patch.end);
+  return new TextEncoder().encode(next);
 }
 
 /** Build artifacts in memory; no device metadata, time or network participates in rendering. */
@@ -97,8 +94,15 @@ export function generate(
 ): ReadonlyMap<string, string | Uint8Array> {
   const selected = parseProfile(profile);
   const files = new Map<string, string | Uint8Array>();
-  if (target === "gcam" || target === "all")
-    files.set("Basile-S23-AGC9.2-V14.agc", renderGcam(selected));
+  if (target === "gcam" || target === "all") {
+    const source = loadGcam(selected);
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+    files.set("Basile-S23-AGC9.2-V14.agc", decoder.decode(fromOriginal(source, "video-hdr30")));
+    files.set(
+      "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
+      decoder.decode(fromOriginal(source, "video-sdr60")),
+    );
+  }
   if (target === "standalone" || target === "all") {
     files.set("Basile-AGC-Camera-profile.zip", nativeProfileZip(selected.name));
     files.set("Basile-AGC-Camera-photo-look.xmp", standaloneXmp(selected.name));
@@ -108,14 +112,14 @@ export function generate(
     "manifest.json",
     JSON.stringify(
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         device: "Samsung Galaxy S23 Snapdragon (SM-S911B)",
         profile: selected,
         outputs: Array.from(files, ([file, bytes]) => ({
           file,
           sha256: createHash("sha256").update(bytes).digest("hex"),
           scope: file.endsWith(".agc")
-            ? "AGC9.2 V14.0 curated camera preferences"
+            ? "AGC9.2 V14.0 privacy-reviewed camera preferences; capture candidate"
             : file.endsWith(".zip")
               ? "AGC Camera 1.8.6 native Profiles v4; neutral photo/portrait/night adjustments"
               : "Optional Adobe photo-look XMP; not accepted in AGC Camera Profiles",
@@ -136,8 +140,18 @@ export function generate(
               }
             : {}),
           physicalDeviceVerified: false,
-          videoHdrDefault:
-            "not encoded: no verified HDR video preference or device mode combination",
+          ...(file.endsWith(".agc")
+            ? {
+                videoRequest: {
+                  mode: "normal",
+                  resolution: "FHD",
+                  fps: file.endsWith("-FHD60-SDR.agc") ? 60 : 30,
+                  hdr10Bit: !file.endsWith("-FHD60-SDR.agc"),
+                },
+                verification:
+                  "target APK controls verified; actual capture mode and device stability unverified",
+              }
+            : { videoHdrDefault: "not part of the standalone profile format" }),
         })),
       },
       null,

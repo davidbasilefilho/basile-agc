@@ -2,7 +2,9 @@
 
 These are **capture requests for normal video**, not phone-verified results. On the base S23 the original GCam recording was FHD **30 fps SDR**, despite a reported 60 fps selection. All 171 decoded frames were distinct and their presentation spacing was consistently about 33.33 ms. The stock app recorded FHD **59.84 fps with 10-bit PQ/BT.2020 signaling**. It had 351 distinct frames and only one roughly 33 ms interval. Samsung recording 60 fps HDR does not establish that the GCam port can do so. Frame timing explains part of the motion difference; it does not measure stabilization strength.
 
-## Use the full private v15, not the historical public fixture
+## Download the public build or generate from a private original
+
+The [CI release](https://github.com/davidbasilefilho/basile-agc/releases) includes both candidates from a capture-preserving [public reference](public-reference.md). Choose the primary .agc for HDR30; the second .agc is explicitly named FHD60-SDR. These builds do not contain the private export. The commands below are the optional, local-only path for using your own complete original.
 
 For the previously verified interface on **SM-S911B, AGC9.2 V14.0 build e23c52c7**, choose one:
 

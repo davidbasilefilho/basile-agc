@@ -10,8 +10,32 @@ export const legacyAssetNames = [
   "Basile-AGC-Camera-photo-look.xmp",
   "manifest.json",
 ] as const;
+/** Historical releases with the native profile but only one GCam preset. */
+export const nativeAssetNames = [...legacyAssetNames, "Basile-AGC-Camera-profile.zip"] as const;
 /** Only these generated artifacts may be attached by the current publisher. */
-export const assetNames = [...legacyAssetNames, "Basile-AGC-Camera-profile.zip"] as const;
+export const assetNames = [...nativeAssetNames, "Basile-S23-AGC9.2-V14-FHD60-SDR.agc"] as const;
+const formats = { legacy: legacyAssetNames, native: nativeAssetNames, video: assetNames } as const;
+const formatNames = {
+  legacy: "Includes the GCam camera preset and an experimental, photo-only standalone XMP.",
+  native:
+    "Includes the GCam camera preset, an experimental native standalone AGC Camera profile ZIP, and an optional photo-look XMP.",
+  video:
+    "Includes the GCam FHD30 HDR candidate and the optional FHD60 SDR candidate, plus the native standalone AGC Camera profile ZIP and optional photo-look XMP. Video output on the S23 has not been physically verified.",
+} as const satisfies Record<keyof typeof formats, string>;
+
+function exactNames(actual: readonly string[], expected: readonly string[]) {
+  return (
+    actual.length === expected.length &&
+    new Set(actual).size === expected.length &&
+    expected.every((name) => actual.includes(name))
+  );
+}
+function currentDigests(expected: Readonly<Record<string, string>>) {
+  return (
+    exactNames(Object.keys(expected), assetNames) &&
+    assetNames.every((name) => /^sha256:[0-9a-f]{64}$/.test(expected[name] ?? ""))
+  );
+}
 /** Sanitized failures never contain credentials or response bodies. */
 export class PublishError extends Data.TaggedError("PublishError")<{ readonly message: string }> {}
 /** Minimum remote asset metadata used in verification. */
@@ -51,12 +75,9 @@ export function releaseNotes(
   tag: string,
   sha: string,
   pre: boolean,
-  format: "native" | "legacy" = "native",
+  format: keyof typeof formats = "video",
 ) {
-  const includes =
-    format === "legacy"
-      ? "Includes the GCam camera preset and an experimental, photo-only standalone XMP."
-      : "Includes the GCam camera preset, an experimental native standalone AGC Camera profile ZIP, and an optional photo-look XMP.";
+  const includes = formatNames[format];
   return {
     title: pre ? `${tag.slice(4, 20)} · ${sha.slice(0, 12)} (preview)` : tag,
     body: `${pre ? "Prerelease" : "Release"} of the Basile AGC generator at commit \`${sha}\`. ${includes} See README and the manifest for device-validation limits.\n\n${pre ? managedMarker(sha) : `<!-- basile-agc:auto-stable:v1:${sha} -->`}\n`,
@@ -120,6 +141,7 @@ export function publish(
 ) {
   return Effect.gen(function* () {
     yield* requireCondition(/^[a-f0-9]{40}$/.test(sha), "Expected full commit ID");
+    yield* requireCondition(currentDigests(expected), "Expected complete current asset digests");
     const pre = stableTag === undefined;
     const tag = stableTag ?? (yield* prereleaseTag(repo, sha));
     if (pre && (yield* included(repo, api, sha))) return "already-in-stable" as const;
@@ -156,6 +178,7 @@ export function prune(
   expected: Readonly<Record<string, string>>,
 ) {
   return Effect.gen(function* () {
+    yield* requireCondition(currentDigests(expected), "Expected complete current asset digests");
     const candidates = new Map<string, RemoteRelease>();
     for (const r of yield* api.releases()) {
       if (
@@ -198,17 +221,11 @@ export function prune(
       // Derive schema from the exact commit's tree, never from remote asset names,
       // tag dates, or a missing-blob error. Unknown tree layouts remain untouched.
       const historicalNames = yield* repo.generatedAssetNames(previewSha);
-      const sameNames = (names: readonly string[]) =>
-        historicalNames.length === names.length &&
-        new Set(historicalNames).size === names.length &&
-        names.every((name) => historicalNames.includes(name));
-      const format = sameNames(assetNames)
-        ? "native"
-        : sameNames(legacyAssetNames)
-          ? "legacy"
-          : null;
-      if (format === null) continue;
-      const historicalAssets = format === "native" ? assetNames : legacyAssetNames;
+      const format = (["video", "native", "legacy"] as const).find((key) =>
+        exactNames(historicalNames, formats[key]),
+      );
+      if (!format) continue;
+      const historicalAssets = formats[format];
       const notes = releaseNotes(tag, previewSha, true, format);
       if (
         live.id !== candidate.id ||

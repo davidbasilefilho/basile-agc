@@ -10,6 +10,7 @@ import { verifyArtifacts } from "../src/verify";
 
 let root = "";
 const gcam = "Basile-S23-AGC9.2-V14.agc";
+const sdr = "Basile-S23-AGC9.2-V14-FHD60-SDR.agc";
 const xmp = "Basile-AGC-Camera-photo-look.xmp";
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "basile-verify-"));
@@ -34,8 +35,14 @@ async function change(file: string, mutate: (text: string) => string, fixDigest:
     await writeFile(path, JSON.stringify(manifest));
   }
 }
-test("independent namespace-aware parser verifies all 453 typed preferences and XMP", async () => {
-  expect(await Effect.runPromise(verifyArtifacts(root))).toBe(453);
+test("independent parser verifies both full typed maps and standalone assets", async () => {
+  const baseline = await readFile(join(root, "data/gcam-92-v14.xml"), "utf8");
+  const count = [...baseline.matchAll(/<(?:string|boolean|int|long|float|set)\s+name=/g)].length;
+  const added = ["pref_video_amethyst_key", "pref_video_fps_key"].filter(
+    (key) => !baseline.includes('name="' + key + '"'),
+  ).length;
+  expect(count).toBeGreaterThan(1100);
+  expect(await Effect.runPromise(verifyArtifacts(root))).toBe(count + added);
 });
 test("validator rejects changed bits even when the XML still parses", async () => {
   await change(gcam, (s) => s + "\n", false);
@@ -80,4 +87,31 @@ test("validator rejects substituted native ZIP even after its digest is recomput
     "_tag",
     "Failure",
   );
+});
+
+test("validator rejects wrong SDR FPS even with a newly valid digest", async () => {
+  await change(
+    sdr,
+    (s) =>
+      s.replace('name="pref_video_fps_p2018_key">FPS_60', 'name="pref_video_fps_p2018_key">FPS_30'),
+    true,
+  );
+  expect(await Effect.runPromise(Effect.result(verifyArtifacts(root)))).toHaveProperty(
+    "_tag",
+    "Failure",
+  );
+});
+test("validator rejects a false phone verification claim and switched manifest modes", async () => {
+  const file = join(root, "generated", "manifest.json");
+  const original = await readFile(file, "utf8");
+  for (const invalid of [
+    original.replace('"physicalDeviceVerified": false', '"physicalDeviceVerified": true'),
+    original.replace('"fps": 30', '"fps": 60'),
+  ]) {
+    await writeFile(file, invalid);
+    expect(await Effect.runPromise(Effect.result(verifyArtifacts(root)))).toHaveProperty(
+      "_tag",
+      "Failure",
+    );
+  }
 });

@@ -15,9 +15,10 @@ type Xml = {
 };
 
 type Atomic = string | string[];
-type Baseline = Record<string, Record<string, Atomic>>;
+type Preferences = Map<string, [string, Atomic]>;
 const names = [
   "Basile-S23-AGC9.2-V14.agc",
+  "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
   "Basile-AGC-Camera-photo-look.xmp",
   "Basile-AGC-Camera-profile.zip",
 ] as const;
@@ -77,18 +78,92 @@ function toError(error: unknown) {
   return error instanceof Error ? error : new Error("Artifact check failed");
 }
 
-/** Independently parse published XML, roundtrip typed preferences and verify both SHA-256 digests. */
+function parsePreferences(input: string) {
+  const tree = xml(input);
+  check(
+    tree.name === "map" && !Object.keys(tree.attrs).length && !tree.text.trim(),
+    "Bad AGC root",
+  );
+  const seen = new Map<string, [string, Atomic]>();
+  for (const n of tree.children) {
+    const key = n.attrs.name;
+    check(key && !seen.has(key), "Missing/duplicate AGC key");
+    let value: Atomic;
+    if (n.name === "set") {
+      check(Object.keys(n.attrs).length === 1 && !n.text.trim(), "Bad set attributes");
+      check(
+        n.children.every(
+          (c) => c.name === "string" && !c.children.length && !Object.keys(c.attrs).length,
+        ),
+        "Bad string set",
+      );
+      value = n.children.map((c) => c.text);
+    } else {
+      check(!n.children.length, "Nested scalar");
+      if (n.name === "string") {
+        check(Object.keys(n.attrs).length === 1, "Bad string attributes");
+        value = n.text;
+      } else {
+        const scalar = n.attrs.value;
+        check(
+          ["boolean", "int", "long", "float"].includes(n.name) &&
+            Object.keys(n.attrs).length === 2 &&
+            typeof scalar === "string" &&
+            !n.text.trim(),
+          "Bad typed scalar",
+        );
+        value = scalar;
+      }
+    }
+    seen.set(key, [n.name, value]);
+  }
+  return seen;
+}
+
+function verifyPreferences(
+  input: string,
+  baseline: Preferences,
+  profile: { name: string; jpegQuality: number },
+  hdr: boolean,
+) {
+  const seen = parsePreferences(input);
+  const canonical: Preferences = new Map();
+  for (const [key, [type, value]] of baseline) {
+    const photoOverride =
+      profile.name !== "Basile" && /^lib_profile_title_key(?:_p0_[0-5])?$/.test(key)
+        ? profile.name
+        : profile.jpegQuality !== 97 && key === "pref_qjpg_key"
+          ? String(profile.jpegQuality)
+          : value;
+    canonical.set(key, [type, photoOverride]);
+  }
+  const rate = hdr ? "FPS_30" : "FPS_60";
+  for (const [key, value] of [
+    ["pref_camera_sounds_key", "0"],
+    ["pref_camera_single_shot_sound_key", "0"],
+    ["pref_video_resolution", "RES_1080P"],
+    ["pref_video_fps_p2018_key", rate],
+    ["pref_video_amethyst_key", hdr ? "1" : "0"],
+    ["pref_video_fps_key", rate],
+  ] as const)
+    canonical.set(key, ["string", value]);
+  check(isDeepStrictEqual([...canonical], [...seen]), "Typed settings or order did not roundtrip");
+  return seen.size;
+}
+
+/** Independently parse both preference maps and standalone profiles and verify all asset digests. */
 export function verifyArtifacts(root: string) {
   return Effect.gen(function* () {
-    const [baseText, profileText, manifestText, agc, xmp, archive] = yield* Effect.all(
+    const [baseText, profileText, manifestText, hdr, sdr, xmp, archive] = yield* Effect.all(
       [
-        file(join(root, "data/gcam-92-v14.json")),
+        file(join(root, "data/gcam-92-v14.xml")),
         file(join(root, "data/profile.json")),
         file(join(root, "generated/manifest.json")),
         file(join(root, "generated", names[0])),
         file(join(root, "generated", names[1])),
+        file(join(root, "generated", names[2])),
         Effect.tryPromise({
-          try: () => readFile(join(root, "generated", names[2])),
+          try: () => readFile(join(root, "generated", names[3])),
           catch: toError,
         }),
       ],
@@ -96,68 +171,54 @@ export function verifyArtifacts(root: string) {
     );
     return yield* Effect.try({
       try: () => {
-        const expected = JSON.parse(baseText) as Baseline;
+        const expected = parsePreferences(baseText);
         const profile = JSON.parse(profileText) as { name: string; jpegQuality: number };
         const report = JSON.parse(manifestText) as {
+          schemaVersion: unknown;
           profile: unknown;
-          outputs: { file: string; sha256: string; physicalDeviceVerified: boolean }[];
+          outputs: {
+            file: string;
+            sha256: string;
+            physicalDeviceVerified: boolean;
+            videoRequest?: unknown;
+          }[];
         };
-        check(isDeepStrictEqual(profile, report.profile), "Profile mismatch");
+        check(
+          report.schemaVersion === 3 && isDeepStrictEqual(profile, report.profile),
+          "Manifest profile/schema mismatch",
+        );
         check(
           Array.isArray(report.outputs) && report.outputs.length === names.length,
           "Wrong output count",
         );
+        const entries = [hdr, sdr, xmp, archive] as const;
         for (const [index, name] of names.entries()) {
           const item = report.outputs.find((r) => r.file === name);
+          const bytes = entries[index];
           check(
-            item && item.physicalDeviceVerified === false,
+            item && item.physicalDeviceVerified === false && bytes !== undefined,
             "Unexpected device claim or missing output",
           );
+          const videoRequest =
+            index < 2
+              ? {
+                  mode: "normal",
+                  resolution: "FHD",
+                  fps: index === 0 ? 30 : 60,
+                  hdr10Bit: index === 0,
+                }
+              : undefined;
+          check(isDeepStrictEqual(item.videoRequest, videoRequest), "Video request mismatch");
           check(
-            item.sha256 ===
-              createHash("sha256")
-                .update(index === 0 ? agc : index === 1 ? xmp : archive)
-                .digest("hex"),
+            item.sha256 === createHash("sha256").update(bytes).digest("hex"),
             "Artifact digest mismatch",
           );
         }
-        const tree = xml(agc);
-        check(tree.name === "map", "Bad AGC root");
-        const seen = new Map<string, [string, Atomic]>();
-        for (const n of tree.children) {
-          const key = n.attrs.name;
-          check(key && !seen.has(key), "Missing/duplicate AGC key");
-          check(Object.hasOwn(expected, n.name), "Unsupported preference type");
-          let value: Atomic;
-          if (n.name === "set") {
-            check(
-              n.children.every(
-                (c) => c.name === "string" && !c.children.length && !Object.keys(c.attrs).length,
-              ),
-              "Bad string set",
-            );
-            value = n.children.map((c) => c.text);
-          } else {
-            check(!n.children.length, "Nested scalar");
-            value = n.name === "string" ? n.text : n.attrs.value!;
-            check(typeof value === "string", "Scalar value missing");
-          }
-          seen.set(key, [n.name, value]);
-        }
-        const canonical = new Map<string, [string, Atomic]>();
-        for (const [t, group] of Object.entries(expected))
-          for (const [k, v] of Object.entries(group)) {
-            check(!canonical.has(k), "Duplicate authoring key");
-            canonical.set(k, [
-              t,
-              k.startsWith("lib_profile_title_key")
-                ? profile.name
-                : k === "pref_qjpg_key"
-                  ? String(profile.jpegQuality)
-                  : v,
-            ]);
-          }
-        check(isDeepStrictEqual(canonical, seen), "Typed settings did not roundtrip");
+        const preferenceCount = verifyPreferences(hdr, expected, profile, true);
+        check(
+          verifyPreferences(sdr, expected, profile, false) === preferenceCount,
+          "Candidate setting counts differ",
+        );
         const preset = xml(xmp);
         check(preset.name === xmpNs + "xmpmeta", "Bad XMP root");
         const descend = (node: Xml | undefined, key: string) =>
@@ -210,7 +271,7 @@ export function verifyArtifacts(root: string) {
           }),
           "Unexpected native profile settings",
         );
-        return seen.size;
+        return preferenceCount;
       },
       catch: toError,
     });
@@ -227,7 +288,7 @@ if (import.meta.main) {
         },
         onSuccess: (count) =>
           console.log(
-            `Independent XML and digest checks passed: ${count} typed preferences plus photo XMP and native v4 profile ZIP.`,
+            `Independent XML and digest checks passed: ${count} typed preferences per candidate plus photo XMP and native v4 profile ZIP.`,
           ),
       }),
     ),
