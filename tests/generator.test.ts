@@ -42,3 +42,17 @@ test("unsafe or unrecognized profile fields fail closed", () => {
   ])
     expect(() => parseProfile(raw)).toThrow();
 });
+
+test("standalone requires manual icon selection rather than an invented XMP preference", () => {
+  const result = generate(profile);
+  const manifest = JSON.parse(result.get("manifest.json")!) as {
+    outputs: { file: string; launcherIcon?: { preferred: string; application: string } }[];
+  };
+  const xmp = manifest.outputs.find((entry) => entry.file.endsWith(".xmp"))!;
+  expect(xmp.launcherIcon?.preferred).toBe("old GCam");
+  expect(xmp.launcherIcon?.application).toContain("manual");
+  expect(result.get(xmp.file)).not.toMatch(/launcherIcon|desktopIcon/i);
+  expect(
+    manifest.outputs.find((entry) => entry.file.endsWith(".agc"))?.launcherIcon,
+  ).toBeUndefined();
+});

@@ -13,7 +13,7 @@ A reproducible generator for a single, balanced look on the Snapdragon Galaxy S2
 
 Back up your working settings first. For the [GCam V14 release](https://www.celsoazevedo.com/files/android/google-camera/dev-BigKaka/f/dl80/), put the generated .agc in `Download/AGC.9.2/configs/` and use the app's Load Configs control. The public preset is a curated subset, **not a byte-for-byte restore**. Prefer a clean test installation when possible: the loader's handling of omitted keys has not been confirmed. Do not use it on AGC9.6 or assume it suits the S23 Ultra. The [9.2 config index](https://www.celsoazevedo.com/files/android/google-camera/f/configs-bigkaka-07/) documents the directory.
 
-For the [standalone app](https://play.google.com/store/apps/details?id=com.agc.gcam), use its photo preset/XMP importer rather than its GCam counterpart. If testing HDR video, select a supported HDR mode in the app, reopen it, and inspect the recorded file. See [manual controls and limits](docs/standalone.md). If a supported combination cannot be found, record it as unavailable; do not relabel an SDR recording.
+For the [standalone app](https://play.google.com/store/apps/details?id=com.agc.gcam), use its photo preset/XMP importer rather than its GCam counterpart. For the requested launcher appearance, select the **old GCam icon** in the standalone app’s desktop-icon setting; this is not an XMP field. If testing HDR video, select a supported HDR mode in the app, reopen it, and inspect the recorded file. See [manual controls and limits](docs/standalone.md). If a supported combination cannot be found, record it as unavailable; do not relabel an SDR recording.
 
 ## Generate, modify, verify
 

@@ -1,5 +1,6 @@
 """Real Git DAG tests for the read-only release pruning policy."""
 import os
+import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
@@ -111,6 +112,20 @@ class ReleasePolicyTests(unittest.TestCase):
         (self.path / ".git" / "shallow").write_text(self.first + "\n")
         with self.assertRaises(PolicyError):
             plan_prune(self.repo, [], "v1")
+
+    def test_asset_digests_bind_exact_historical_blob_bytes(self):
+        target = self.path / "generated"
+        target.mkdir()
+        file = target / "example.xmp"
+        payload = b"utf8 text\r\nunchanged bytes\n"
+        file.write_bytes(payload)
+        self.git("add", "generated/example.xmp")
+        sha = self.commit("assets", "2026-01-05T00:00:00Z")
+        file.write_bytes(b"uncommitted change")
+        self.assertEqual(self.repo.asset_digests(sha, ["example.xmp"]), {
+            "example.xmp": "sha256:" + hashlib.sha256(payload).hexdigest()})
+        with self.assertRaises(PolicyError):
+            self.repo.asset_digests(sha, ["missing.file"])
 
     def test_non_commit_tag_aborts(self):
         blob = self.git("hash-object", "-w", "--stdin")

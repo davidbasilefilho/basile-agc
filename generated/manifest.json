@@ -18,6 +18,10 @@
       "file": "Basile-AGC-Camera-photo-look.xmp",
       "sha256": "de6b162302ade950a1f119696af055cc19408097180c6bb894fcfb0789756080",
       "scope": "AGC Camera 1.8.6 experimental photo-look subset",
+      "launcherIcon": {
+        "preferred": "old GCam",
+        "application": "manual in standalone AGC Camera (since 1.8.0); not controlled by XMP"
+      },
       "physicalDeviceVerified": false,
       "videoHdrDefault": "not encoded: no verified HDR video preference or device mode combination"
     }

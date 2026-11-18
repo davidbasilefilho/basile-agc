@@ -111,6 +111,15 @@ export function generate(profile: Profile, target: Target = "all"): ReadonlyMap<
           scope: file.endsWith(".agc")
             ? "AGC9.2 V14.0 curated camera preferences"
             : "AGC Camera 1.8.6 experimental photo-look subset",
+          ...(file.endsWith(".xmp")
+            ? {
+                launcherIcon: {
+                  preferred: "old GCam",
+                  application:
+                    "manual in standalone AGC Camera (since 1.8.0); not controlled by XMP",
+                },
+              }
+            : {}),
           physicalDeviceVerified: false,
           videoHdrDefault:
             "not encoded: no verified HDR video preference or device mode combination",

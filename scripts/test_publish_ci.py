@@ -4,8 +4,8 @@ import unittest
 from unittest.mock import Mock, patch
 
 from publish_ci import (BOT, ASSETS, checked_assets, digest_assets, owns, prune, publish,
-                        stable_marker)
-from release_policy import managed_marker, PrunePlan
+                        release_notes)
+from release_policy import PrunePlan
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "a" * 40
@@ -15,10 +15,11 @@ EXPECTED = digest_assets(ROOT)
 
 
 def record(tag, sha, pre=False, id=1):
-    return {"tag_name": tag, "draft": False, "prerelease": pre, "immutable": False,
-            "id": id, "body": (managed_marker if pre else stable_marker)(sha),
+    title, notes = release_notes(tag, sha, pre)
+    return {"tag_name": tag, "name": title, "draft": False, "prerelease": pre, "immutable": False,
+            "id": id, "body": notes,
             "author": {"login": BOT, "type": "Bot"},
-            "assets": [{"name": n, "state": "uploaded", "digest": EXPECTED[n]} for n in ASSETS]}
+            "assets": [{"name": n, "state": "uploaded", "digest": EXPECTED[n], "uploader": {"login": BOT}} for n in ASSETS]}
 
 
 class Service:
@@ -57,6 +58,7 @@ class PublisherTests(unittest.TestCase):
     def setUp(self):
         self.api = Service()
         self.repo = Mock()
+        self.repo.asset_digests.return_value = EXPECTED
         self.repo.resolve_tag.side_effect = lambda tag: self.api.refs.get(tag)
 
     def test_create_and_repeat_stable_without_duplicate_or_tag_delete(self):
@@ -102,6 +104,19 @@ class PublisherTests(unittest.TestCase):
                 prune(self.repo, self.api, "v1", TIP, EXPECTED)
                 self.assertEqual(api.call_count, 1)
                 self.assertNotIn("method", api.call_args.kwargs)
+
+    def test_hand_edited_preview_assets_or_notes_survive(self):
+        self.api.refs[TAG] = BASE
+        good = record(TAG, BASE, True, id=2)
+        for change in [{"assets": good["assets"] + [{"name": "manual.txt"}]},
+                       {"assets": [{**a, "digest": "sha256:replaced"} for a in good["assets"]]},
+                       {"assets": [{**a, "uploader": {"login": "human"}} for a in good["assets"]]},
+                       {"name": "manual title"}, {"body": good["body"] + "personal notes"}]:
+            self.api.records = {"v1": record("v1", TIP), TAG: {**good, **change}}
+            with self.subTest(change=change), patch("publish_ci.plan_prune", return_value=PrunePlan((TAG,))):
+                prune(self.repo, self.api, "v1", TIP, EXPECTED)
+                self.assertIn(TAG, self.api.records)
+        self.assertEqual(self.api.deleted, [])
 
     def test_preview_on_already_released_commit_skips_even_on_replay(self):
         self.api.records["v1"] = record("v1", TIP)

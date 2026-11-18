@@ -12,6 +12,12 @@ AGC9.2.14 V14 GCam mod. Both are by BigKaka. The developer advertises Lightroom
 XMP import, but a documented standalone whole-config schema and a supported
 GCam-patcher conversion were not found. Renaming `.agc` would be misleading.
 
+## Launcher icon: old GCam, not the default
+
+In the standalone app's settings, find the desktop/app icon selector and choose the **old GCam icon**. This is a built-in option, not the monochrome icon style or an alternate APK. BigKaka [introduced it in 1.8.0](https://www.celsoazevedo.com/files/android/agc-camera/f/dl06/) and [fixed an icon-switching crash in 1.8.5](https://www.celsoazevedo.com/files/android/agc-camera/f/dl07/). The exact translated label and menu nesting were not verified. Check the icon on the home screen after changing it.
+
+The generated manifest records this manual post-import setting. A Lightroom XMP describes photographic adjustments; there is no verified importable launcher-icon mapping. The generator does not set or claim to have changed the phone's icon, modify an APK, or apply this standalone setting to the GCam mod.
+
 ## Exact intent
 
 The photographic subset uses Adobe's Camera Raw namespace:

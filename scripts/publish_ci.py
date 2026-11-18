@@ -54,6 +54,16 @@ def checked_assets(record, expected):
         a["name"]: a.get("digest") for a in assets} == expected
 
 
+def release_notes(tag, sha, pre):
+    kind = "Prerelease" if pre else "Release"
+    title = f"{tag[4:20]} · {sha[:12]} (preview)" if pre else tag
+    body = (f"{kind} of the Basile AGC generator at commit `{sha}`. "
+            "Includes the GCam camera preset and an experimental, photo-only standalone XMP. "
+            "See README and the manifest for device-validation limits.\n\n"
+            + (managed_marker(sha) if pre else stable_marker(sha)) + "\n")
+    return title, body
+
+
 class GitHub:
     def __init__(self, token):
         self.token = token
@@ -108,12 +118,7 @@ class GitHub:
             require(pre, "Missing stable tag; never create it")
             self.api("git/refs", method="POST", data={"ref": "refs/tags/" + tag, "sha": sha})
         require(self.ref_sha(tag) == sha, "Tag target changed; stopped before publishing")
-        kind = "Prerelease" if pre else "Release"
-        title = f"{tag[4:20]} · {sha[:12]} (preview)" if pre else tag
-        body = (f"{kind} of the Basile AGC generator at commit `{sha}`. "
-                "Includes the GCam camera preset and an experimental, photo-only standalone XMP. "
-                "See README and the manifest for device-validation limits.\n\n"
-                + (managed_marker(sha) if pre else stable_marker(sha)) + "\n")
+        title, body = release_notes(tag, sha, pre)
         with tempfile.TemporaryDirectory() as temp:
             notes = Path(temp) / "notes.md"
             notes.write_text(body)
@@ -193,7 +198,13 @@ def prune(repo, api, stable, sha, expected):
         live = api.api("releases/" + str(rid), missing_ok=True)
         if live is None:
             continue
-        if (not owns(live, tag, tag[-40:], True) or live.get("id") != rid
+        title, notes = release_notes(tag, tag[-40:], True)
+        # A user can add release notes or assets after the preview was published.
+        # Retain such edits instead of deleting them as a side effect of pruning.
+        if (live.get("name") != title or (live.get("body") or "").splitlines() != notes.splitlines()
+                or not checked_assets(live, repo.asset_digests(tag[-40:], ASSETS))
+                or any(a.get("uploader", {}).get("login") != BOT for a in live["assets"])
+                or not owns(live, tag, tag[-40:], True) or live.get("id") != rid
                 or live.get("immutable") is not False or api.ref_sha(tag) != tag[-40:]):
             print("Retained changed or immutable candidate:", tag)
             continue

@@ -5,6 +5,7 @@ plan if evaluation raises; revalidate remote metadata before applying a plan.
 """
 from __future__ import annotations
 import re
+import hashlib
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -79,6 +80,26 @@ class GitRepository:
             raise PolicyError("Invalid Git committer timestamp") from error
         if not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z", result, re.ASCII):
             raise PolicyError("Commit timestamp is outside supported tag range")
+        return result
+
+    def asset_digests(self, sha: str, assets: Iterable[str]) -> dict[str, str]:
+        """Hash the checked-in UTF-8 text assets for this exact preview commit."""
+        if not _SHA.fullmatch(sha):
+            raise PolicyError("Invalid asset commit")
+        result = {}
+        for name in assets:
+            if not re.fullmatch(r"[A-Za-z0-9._-]+", name) or name in (".", ".."):
+                raise PolicyError("Unexpected asset name")
+            oid = sha + ":generated/" + name
+            size = self._run("cat-file", "-s", oid).stdout.strip()
+            if not size.isdecimal() or not 0 < int(size) <= 4 * 1024 * 1024:
+                raise PolicyError("Unexpected asset size")
+            # Use byte mode: line ending conversion must not alter SHA-256.
+            proc = subprocess.run(
+                ["git", "--no-replace-objects", "-C", str(self.path), "cat-file", "blob", oid],
+                check=True, capture_output=True, timeout=30,
+            )
+            result[name] = "sha256:" + hashlib.sha256(proc.stdout).hexdigest()
         return result
 
     def is_ancestor(self, ancestor: str, descendant: str) -> bool:
