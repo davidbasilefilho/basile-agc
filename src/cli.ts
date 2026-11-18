@@ -4,9 +4,10 @@ import { join, resolve } from "node:path";
 import { Effect } from "effect";
 
 import { generate, parseProfile, type Target } from "./generator";
+import { useOriginal, type OriginalOverlay } from "./lossless";
 
 const usage =
-  "bun run generate|validate [--target all|gcam|standalone] [--profile FILE] [--out DIRECTORY]";
+  "bun run generate|validate [--target all|gcam|standalone] [--profile FILE] [--out DIRECTORY] or --source ORIGINAL.agc --out EXISTING_PRIVATE_DIRECTORY [--overlay none|sounds-off|video-hdr30|video-sdr60]";
 const err = (e: unknown) => (e instanceof Error ? e : new Error("Generation failed"));
 const io = <T>(action: () => Promise<T>) => Effect.tryPromise({ try: action, catch: err });
 const checked = <T>(action: () => T) => Effect.try({ try: action, catch: err });
@@ -14,6 +15,8 @@ const checked = <T>(action: () => T) => Effect.try({ try: action, catch: err });
 function parseArgs(args: string[]) {
   const [command, ...rest] = args;
   if (command !== "generate" && command !== "validate") throw new Error(usage);
+  let source: string | undefined;
+  let overlay: OriginalOverlay = "none";
   let target: Target = "all",
     profile = resolve(import.meta.dir, "../data/profile.json"),
     out = resolve("generated");
@@ -25,11 +28,26 @@ function parseArgs(args: string[]) {
     seen.add(flag);
     if (flag === "--target" && (value === "all" || value === "gcam" || value === "standalone"))
       target = value;
+    else if (flag === "--source") source = resolve(value);
+    else if (
+      flag === "--overlay" &&
+      (value === "none" ||
+        value === "sounds-off" ||
+        value === "video-hdr30" ||
+        value === "video-sdr60")
+    )
+      overlay = value;
     else if (flag === "--profile") profile = resolve(value);
     else if (flag === "--out") out = resolve(value);
     else throw new Error(usage);
   }
-  return { command, target, profile, out };
+  if (
+    source &&
+    (!seen.has("--out") || seen.has("--profile") || (seen.has("--target") && target !== "gcam"))
+  )
+    throw new Error(usage);
+  if (!source && seen.has("--overlay")) throw new Error(usage);
+  return { command: command as "generate" | "validate", target, profile, out, source, overlay };
 }
 
 function run(args: string[]) {
@@ -38,7 +56,25 @@ function run(args: string[]) {
       console.log(usage);
       return;
     }
-    const { command, profile, target, out } = yield* checked(() => parseArgs(args));
+    const { command, profile, target, out, source, overlay } = yield* checked(() =>
+      parseArgs(args),
+    );
+    if (source) {
+      const result = yield* useOriginal(command, source, out, overlay);
+      console.log(
+        (command === "generate" ? "Generated" : "Verified") +
+          (result.identical
+            ? " private GCam config: byte-identical to source."
+            : overlay.startsWith("video-")
+              ? " private GCam video candidate: requested settings saved; S23 recording not verified."
+              : " private GCam config: only requested sound values changed."),
+      );
+      return;
+    }
+    if (target !== "standalone")
+      console.warn(
+        "Public GCam fixture is a historical subset, not a recovery file. Use --source for a faithful GCam config.",
+      );
     const json = yield* io(() => readFile(profile, "utf8"));
     const files = yield* checked(() => generate(parseProfile(JSON.parse(json) as unknown), target));
     if (command === "generate") yield* io(() => mkdir(out, { recursive: true }));
