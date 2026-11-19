@@ -23,3 +23,26 @@ test("private sound-only generation preserves geotag consent, video and night se
   for (const overlay of ["video-hdr30", "video-sdr60", "global-hdr60"])
     expect(() => fromOriginal(original, overlay as OriginalOverlay)).toThrow();
 });
+
+test("public location overlay changes only the verified toggle and fails closed", () => {
+  const muted = source
+    .replaceAll('sounds_key">1', 'sounds_key">0')
+    .replace('single_shot_sound_key">1', 'single_shot_sound_key">0');
+  const disabled = muted.replace('recordlocation_key">1', 'recordlocation_key">0');
+  const encode = (value: string) => new TextEncoder().encode(value);
+  expect(new TextDecoder().decode(fromOriginal(encode(disabled), "sounds-off-geotag"))).toBe(muted);
+  expect(fromOriginal(encode(disabled))).toEqual(encode(disabled));
+  expect(fromOriginal(encode(disabled), "sounds-off")).toEqual(encode(disabled));
+  expect(() =>
+    fromOriginal(
+      encode(disabled.replace('recordlocation_key">0', 'recordlocation_key">invalid')),
+      "sounds-off-geotag",
+    ),
+  ).toThrow();
+  expect(() =>
+    fromOriginal(
+      encode(disabled.replace('<string name="pref_camera_recordlocation_key">0</string>', "")),
+      "sounds-off-geotag",
+    ),
+  ).toThrow();
+});

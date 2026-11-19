@@ -14,13 +14,17 @@ function editsFor(overlay: OriginalOverlay) {
   if (overlay === "none") return new Map<string, Edit>();
   const edits = new Map(soundEdits);
   if (overlay === "sounds-off") return edits;
+  if (overlay === "sounds-off-geotag") {
+    edits.set("pref_camera_recordlocation_key", { value: "1", allowed: toggle });
+    return edits;
+  }
   fail();
 }
 const maxBytes = 8 * 1024 * 1024;
 const name = "Basile-S23-AGC9.2-V14.agc";
 
 /** Private recovery options: preserve the original or request only the named sound settings. */
-export type OriginalOverlay = "none" | "sounds-off";
+export type OriginalOverlay = "none" | "sounds-off" | "sounds-off-geotag";
 
 function fail(): never {
   throw new Error("Unsupported, ambiguous, or invalid Android preference map; no output written.");

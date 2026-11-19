@@ -17,7 +17,12 @@ test("same input yields exactly the same three artifacts and digest manifest", (
 test("published GCam preserves the complete photo and video baseline", async () => {
   const source = await Bun.file(new URL("../data/gcam-92-v14.xml", import.meta.url)).text();
   const result = generate(profile, "gcam");
-  expect(result.get("Basile-S23-AGC9.2-V14.agc")).toBe(source);
+  expect(result.get("Basile-S23-AGC9.2-V14.agc")).toBe(
+    source.replace(
+      '<string name="pref_camera_recordlocation_key">0</string>',
+      '<string name="pref_camera_recordlocation_key">1</string>',
+    ),
+  );
   expect(result.size).toBe(2);
   expect(result.has("Basile-S23-AGC9.2-V14-FHD60-SDR.agc")).toBe(false);
   const manifest = JSON.parse(String(result.get("manifest.json")));

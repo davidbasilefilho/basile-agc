@@ -509,7 +509,7 @@
     <string name="lib_luma_dl_sabre_l3a_key">Off (as in library)</string>
     <string name="lib_pref_frame_count_key">0</string>
     <string name="pref_lens_title_short_key_3" />
-    <string name="pref_camera_recordlocation_key">0</string>
+    <string name="pref_camera_recordlocation_key">1</string>
     <boolean name="finish_video_capture" value="true" />
     <string name="pref_lens_title_short_key_0">1</string>
     <string name="lib_gpu_contrast_key">1.0</string>

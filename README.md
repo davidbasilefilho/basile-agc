@@ -34,11 +34,13 @@ For a separate muted copy, choose a fresh directory and supply `--overlay sounds
 
 Automatic low-light assistance should remain optional for each shot. The source's `camera.promote_night_sight=true` is preserved, but a Night Sight recommendation is not proof that this V14 build automatically activates it on the S23. This release does not force Night Sight mode or add an unverified activation flag. Use the app's visible Night Sight/Photo controls to choose the mode; an automatic per-shot override still needs confirmation in the exact installed build. Preserve the working photo tuning while checking that behavior.
 
-### Location metadata is an individual choice
+### Location recording is enabled by default
 
-The public config keeps `pref_camera_recordlocation_key` as string `"0"`: importing a shared preset must not opt other people into location recording. To record location on your own phone, enable **Save location / Salvar local** in GCam settings and grant the camera app Android location permission (including precise location if desired). Check a newly saved photo's details; enabling the setting does not backfill earlier photos. Sharing photos may expose their GPS metadata.
+**The generated GCam config enables Save location. Future photos can contain GPS coordinates when Android location permission and device location services allow it. Sharing original photos may expose where they were taken.** To disable recording, turn off **Save location / Salvar local** in GCam settings, or revoke the app's Android location permission. Importing a config cannot grant Android permissions or backfill old photos.
 
-For an existing private export that already has string `pref_camera_recordlocation_key="1"`, the `--source` workflow above preserves it byte-for-byte; `--overlay sounds-off` changes only the two shutter-sound values and also preserves that choice. Keep both original and generated files outside this checkout. No new public geotag-enabled build is provided.
+The generator changes only the verified string `pref_camera_recordlocation_key` from `"0"` to `"1"` relative to the immutable, privacy-reviewed reference. No coordinates, location history or private exports are bundled. Photo/video tuning and the existing privacy sanitization are unchanged.
+
+The private `--source` workflow preserves your own choice byte-for-byte; `--overlay sounds-off` changes only shutter-sound values. Keep original and generated private files outside this checkout.
 
 ## Generate, modify, verify the public release artifacts
 

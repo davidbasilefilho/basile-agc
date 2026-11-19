@@ -97,7 +97,10 @@ export function generate(
   if (target === "gcam" || target === "all") {
     const source = loadGcam(selected);
     const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-    files.set("Basile-S23-AGC9.2-V14.agc", decoder.decode(fromOriginal(source, "sounds-off")));
+    files.set(
+      "Basile-S23-AGC9.2-V14.agc",
+      decoder.decode(fromOriginal(source, "sounds-off-geotag")),
+    );
   }
   if (target === "standalone" || target === "all") {
     files.set("Basile-AGC-Camera-profile.zip", nativeProfileZip(selected.name));

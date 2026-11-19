@@ -10,7 +10,7 @@
   "outputs": [
     {
       "file": "Basile-S23-AGC9.2-V14.agc",
-      "sha256": "e35f89ad9dc2c5597b28170b805fd4182c5fc1564d9d0bb2790e1f8783f14b4d",
+      "sha256": "bec9970e5ef27e75d6fa52eeda7ad3b0d4ba169e13eb7521b9e09815f9f0ce0e",
       "scope": "AGC9.2 V14.0 privacy-reviewed camera preferences; capture candidate",
       "physicalDeviceVerified": false,
       "videoPolicy": "preserve-source",

@@ -136,6 +136,7 @@ function verifyPreferences(
     canonical.set(key, [type, photoOverride]);
   }
   for (const [key, value] of [
+    ["pref_camera_recordlocation_key", "1"],
     ["pref_camera_sounds_key", "0"],
     ["pref_camera_single_shot_sound_key", "0"],
   ] as const)

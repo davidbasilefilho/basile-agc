@@ -17,3 +17,5 @@ The reviewed baseline SHA-256 is `e35f89ad9dc2c5597b28170b805fd4182c5fc1564d9d0b
 The photo-first asset preserves all 1,318 reviewed source preferences, including baseline video controls and the two disabled shutter sounds. No HDR/FPS preferences are inserted. Public location recording remains disabled; a private `--source` copy preserves the owner's existing opt-in. Photo tuning is not changed by this consolidation.
 
 Use the [source-preserving private generator](../README.md) for an exact rollback to your own export, or [GitHub Releases](https://github.com/davidbasilefilho/basile-agc/releases) for this reviewed public build.
+
+The immutable reference keeps location recording off. The current public generator explicitly overlays only the verified location-recording string to "1", as requested; it does not restore any coordinates or history. Future photos may contain GPS when permissions allow.
