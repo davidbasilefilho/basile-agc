@@ -734,16 +734,16 @@
     <boolean name="camcorder.washington" value="true" />
     <string name="lib_sharpen_default_h_2a_key" />
     <string name="lib_shastaforce_key_p0_5">1</string>
-    <string name="pref_satcct_key_3">1.0</string>
+    <string name="pref_satcct_key_3">1.05</string>
     <string name="lib_p5_nm_gain_multiplier_key_p0_1">1.3</string>
     <string name="lib_p5_nm_gain_multiplier_key_p0_2" />
-    <string name="pref_satcct_key_4">0.95</string>
-    <string name="pref_satcct_key_1">1.0</string>
+    <string name="pref_satcct_key_4">1.00</string>
+    <string name="pref_satcct_key_1">1.05</string>
     <string name="lib_p5_nm_gain_multiplier_key_p0_3" />
-    <string name="pref_satcct_key_2">1.05</string>
+    <string name="pref_satcct_key_2">1.10</string>
     <string name="lib_p5_nm_gain_multiplier_key_p0_4" />
     <string name="lib_p5_nm_gain_multiplier_key_p0_5" />
-    <string name="pref_satcct_key_0">1.05</string>
+    <string name="pref_satcct_key_0">1.10</string>
     <string name="pref_manual_opmode_portrait_key">0</string>
     <string name="lib_profile_title_key">Basile</string>
     <string name="lib_pref_satcct_y_key">1.0</string>
@@ -782,7 +782,7 @@
     <string name="pref_c2a_key_1">0</string>
     <string name="pref_c2a_key_4">0</string>
     <string name="lib_merge23_luma_dh_sabre_l5a_key">Off (as in library)</string>
-    <string name="pref_satcct_key_5">1.05</string>
+    <string name="pref_satcct_key_5">1.10</string>
     <string name="pref_awbratio_key">0</string>
     <string name="pref_c2a_key_3">0</string>
     <string name="co_gr_key">1.9878738E-12</string>
@@ -1191,7 +1191,7 @@
     <string name="lib_shadow_compensation_key_p0_1">3.50</string>
     <string name="pref_y_hue_key">0</string>
     <string name="lib_hdr_overall_lightness_key">Off (as in library)</string>
-    <string name="lib_shadow_compensation_key_p0_2">3.50</string>
+    <string name="lib_shadow_compensation_key_p0_2">3.60</string>
     <string name="lib_shadow_compensation_key_p0_0">3.50</string>
     <string name="lib_lut_intensity_key">1.0</string>
     <string name="pref_manual_opmode_time_lapse_key">0</string>

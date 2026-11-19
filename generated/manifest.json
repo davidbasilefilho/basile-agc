@@ -1,7 +1,7 @@
 {
   "schemaVersion": 4,
   "releaseLayout": "photo-first-v1",
-  "configRevision": "r16",
+  "configRevision": "r17",
   "device": "Samsung Galaxy S23 Snapdragon (SM-S911B)",
   "profile": {
     "name": "Basile",
@@ -10,8 +10,8 @@
   },
   "outputs": [
     {
-      "file": "Basile-S23-AGC9.2-V14-r16.agc",
-      "sha256": "bec9970e5ef27e75d6fa52eeda7ad3b0d4ba169e13eb7521b9e09815f9f0ce0e",
+      "file": "Basile-S23-AGC9.2-V14-r17.agc",
+      "sha256": "7c32cc71f55c512809d6af45e3ff4dfd8b76ef7791b5db08bbbd8333868299cb",
       "scope": "AGC9.2 V14.0 privacy-reviewed camera preferences; capture candidate",
       "physicalDeviceVerified": false,
       "videoPolicy": "preserve-source",

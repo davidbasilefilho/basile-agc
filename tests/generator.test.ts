@@ -10,14 +10,30 @@ test("same input yields exactly the same three artifacts and digest manifest", (
   expect([...first.keys()].sort()).toEqual([
     "Basile-AGC-Camera-photo-look.xmp",
     "Basile-AGC-Camera-profile.zip",
-    "Basile-S23-AGC9.2-V14-r16.agc",
+    "Basile-S23-AGC9.2-V14-r17.agc",
     "manifest.json",
   ]);
 });
-test("published GCam preserves the complete photo and video baseline", async () => {
-  const source = await Bun.file(new URL("../data/gcam-92-v14.xml", import.meta.url)).text();
+test("published GCam changes only approved photo controls and preserves all remaining settings", async () => {
+  let source = await Bun.file(new URL("../data/gcam-92-v14.xml", import.meta.url)).text();
+  for (const [slot, before, after] of [
+    ["0", "1.05", "1.10"],
+    ["1", "1.0", "1.05"],
+    ["2", "1.05", "1.10"],
+    ["3", "1.0", "1.05"],
+    ["4", "0.95", "1.00"],
+    ["5", "1.05", "1.10"],
+  ])
+    source = source.replace(
+      '<string name="pref_satcct_key_' + slot + '">' + before + "</string>",
+      '<string name="pref_satcct_key_' + slot + '">' + after + "</string>",
+    );
+  source = source.replace(
+    '<string name="lib_shadow_compensation_key_p0_2">3.50</string>',
+    '<string name="lib_shadow_compensation_key_p0_2">3.60</string>',
+  );
   const result = generate(profile, "gcam");
-  expect(result.get("Basile-S23-AGC9.2-V14-r16.agc")).toBe(
+  expect(result.get("Basile-S23-AGC9.2-V14-r17.agc")).toBe(
     source.replace(
       '<string name="pref_camera_recordlocation_key">0</string>',
       '<string name="pref_camera_recordlocation_key">1</string>',
@@ -33,7 +49,7 @@ test("published GCam preserves the complete photo and video baseline", async () 
 });
 test("variant affects both display names, requested quality and digests without adding raw settings", () => {
   const variants = generate({ ...profile, name: "Basile & Field", jpegQuality: 92 });
-  const agc = variants.get("Basile-S23-AGC9.2-V14-r16.agc")!;
+  const agc = variants.get("Basile-S23-AGC9.2-V14-r17.agc")!;
   expect(agc).toContain("Basile &amp; Field");
   expect(agc).toContain('name="pref_qjpg_key">92</string>');
   expect(variants.get("Basile-AGC-Camera-photo-look.xmp")).toContain("Basile &amp; Field");
@@ -67,7 +83,7 @@ test("standalone requires manual icon selection rather than an invented XMP pref
 });
 
 test("preserves verified original camera defaults without sharing-app history", () => {
-  const xml = String(generate(profile, "gcam").get("Basile-S23-AGC9.2-V14-r16.agc"));
+  const xml = String(generate(profile, "gcam").get("Basile-S23-AGC9.2-V14-r17.agc"));
   for (const [key, value] of [
     ["pref_camera_recordlocation_key", "1"],
     ["pref_p3_key", "1"],

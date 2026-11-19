@@ -9,7 +9,7 @@ import { Effect } from "effect";
 import { verifyArtifacts } from "../src/verify";
 
 let root = "";
-const gcam = "Basile-S23-AGC9.2-V14-r16.agc";
+const gcam = "Basile-S23-AGC9.2-V14-r17.agc";
 const xmp = "Basile-AGC-Camera-photo-look.xmp";
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "basile-verify-"));

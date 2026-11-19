@@ -75,8 +75,18 @@ See [release triggers, commit-date naming, assets and ancestry-only pruning](REL
 
 ## Revision and stale artifacts
 
-The public GCam filename includes deterministic revision r16, also recorded in the manifest. Bump this revision for a changed published camera profile so downloads/imports do not overwrite an older revision. Private-source recovery retains its original stable output filename.
+The public GCam filename includes deterministic revision r17, also recorded in the manifest. Bump this revision for a changed published camera profile so downloads/imports do not overwrite an older revision. Private-source recovery retains its original stable output filename.
 
 CI removes only regular generator-owned obsolete GCam filenames inside this checkout’s generated directory, then requires a clean Git diff there. A committed stale artifact therefore fails CI and must be removed in the PR, rather than being hidden by regeneration. Arbitrary output directories, private originals, standalone formats and historical GitHub releases are never deleted by this cleanup.
 
 Bump `configRevision` in `src/config-revision.ts`, regenerate, remove the obsolete tracked output, update concrete fixture assertions, and run all checks. Generator, verifier, cleanup and publisher derive the current AGC filename from that one constant. Previously published revisioned layouts that are no longer recognized are retained by pruning (fail closed), not guessed or deleted. Historical unsuffixed schema definitions must remain unchanged.
+
+## r17 photo adjustment
+
+The audited input XML remains unchanged. `data/photo-adjustments.json` applies the accepted +0.05 change to six existing color coefficients and changes only `lib_shadow_compensation_key_p0_2` from string `3.50` to `3.60`. The original configuration labels slot 2 as telephoto. That label is not proof of physical-camera routing or of the direction/magnitude of the resulting shadow change.
+
+The slot-2 adjustment is deliberately small and reversible; verify darker interiors first, then repeat the outdoor scene. Check foliage separation, noise, stone/cloud detail and haloing. No claim of extra captured dynamic range or guaranteed brighter shadows is made. Global/main brightness, shadow compensation, exposure, highlight controls, capture/HDR/P3 preferences, Night Sight and video preferences remain unchanged. Existing color and shadow processing may be shared across modes, so unchanged mode flags do not prove unchanged rendering in every mode.
+
+The 2× crop may share the main-camera slot with 1×. No verified independent zoom-conditioned control is available, so r17 does not change the good 1× reference to compensate for 2×. For a matched comparison, (1) select 1× and meter/lock on the same subject if the app offers exposure lock; (2) select 2× without changing that lock, capture and compare. If lock is reset by zoom, re-meter the same subject; this is a comparison procedure, not a saved automatic correction.
+
+P3 and existing HDR-related preferences are preserved; a dedicated Ultra HDR output switch and gain-map output were not established. Gallery selection remains the original value, sharing buttons stay disabled, geotagging enabled, and sounds off. Import r16 to revert both the new color coefficients and slot-2 shadow adjustment, or the previously accepted color configuration to revert only the slot-2 change.

@@ -14,7 +14,7 @@ The reviewed baseline SHA-256 is `e35f89ad9dc2c5597b28170b805fd4182c5fc1564d9d0b
 
 ## What the release overlays add
 
-The photo-first asset preserves all 1,318 reviewed source preferences, including baseline video controls and the two disabled shutter sounds. No HDR/FPS preferences are inserted. Public location recording is explicitly enabled by the generator; a private `--source` copy preserves the owner's existing choice. Photo tuning is not changed by this consolidation.
+The photo-first asset preserves all 1,318 reviewed source preferences, including baseline video controls and the two disabled shutter sounds. No HDR/FPS preferences are inserted. Public location recording is explicitly enabled by the generator; a private `--source` copy preserves the owner's existing choice. r17 additionally applies seven explicit photo adjustments from data/photo-adjustments.json: six accepted color coefficients and the slot-2 shadow value. The baseline file and audit digest remain unchanged; see USAGE.md for the exact values and scope limitations.
 
 Use the [source-preserving private generator](USAGE.md) for an exact rollback to your own export, or [GitHub Releases](https://github.com/davidbasilefilho/basile-agc/releases) for this reviewed public build.
 

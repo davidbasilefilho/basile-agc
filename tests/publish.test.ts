@@ -333,7 +333,7 @@ test("adding the SDR file to a historical native preview prevents pruning", asyn
 test("current stable publication requires all four assets", async () => {
   const f = fixture();
   const r = record("v1", tip);
-  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14-r16.agc");
+  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14-r17.agc");
   f.records.set("v1", r);
   expect(
     Exit.isFailure(await Effect.runPromiseExit(publish(f.repo, f.api, tip, expected, "v1"))),

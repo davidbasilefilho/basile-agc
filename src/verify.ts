@@ -139,6 +139,13 @@ function verifyPreferences(
   }
   for (const [key, value] of [
     ["pref_camera_recordlocation_key", "1"],
+    ["pref_satcct_key_0", "1.10"],
+    ["pref_satcct_key_1", "1.05"],
+    ["pref_satcct_key_2", "1.10"],
+    ["pref_satcct_key_3", "1.05"],
+    ["pref_satcct_key_4", "1.00"],
+    ["pref_satcct_key_5", "1.10"],
+    ["lib_shadow_compensation_key_p0_2", "3.60"],
     ["pref_camera_sounds_key", "0"],
     ["pref_camera_single_shot_sound_key", "0"],
   ] as const)
