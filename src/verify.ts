@@ -17,7 +17,7 @@ type Xml = {
 type Atomic = string | string[];
 type Preferences = Map<string, [string, Atomic]>;
 const names = [
-  "Basile-S23-AGC9.2-V14.agc",
+  "Basile-S23-AGC9.2-V14-r16.agc",
   "Basile-AGC-Camera-photo-look.xmp",
   "Basile-AGC-Camera-profile.zip",
 ] as const;

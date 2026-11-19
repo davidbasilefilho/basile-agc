@@ -4,7 +4,7 @@ One balanced, photo-first look for the Snapdragon Galaxy S23 (SM-S911B). Two app
 
 | App                             | Download/build asset            | What to use it for                                                                     |
 | ------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
-| GCam **AGC9.2.14 V14.0**        | `Basile-S23-AGC9.2-V14.agc`     | One photo-first configuration; baseline video controls preserved, camera sounds off.   |
+| GCam **AGC9.2.14 V14.0**        | `Basile-S23-AGC9.2-V14-r16.agc` | One photo-first configuration; baseline video controls preserved, camera sounds off.   |
 | Standalone **AGC Camera 1.8.6** | `Basile-AGC-Camera-profile.zip` | Native v4 profile for Ajustes → Perfis; neutral Photo, Portrait and Night adjustments. |
 
 One complete photo-first GCam preset, with camera sounds off and original video controls preserved. The standalone ZIP and optional XMP remain separate formats. Look for a release marked `photo-first-v1`; older four-file releases are not equivalent.

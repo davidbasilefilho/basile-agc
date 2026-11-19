@@ -44,7 +44,12 @@ function record(name: string, sha: string, pre = false, id = 1): RemoteRelease {
 function historicalPreview(format: "legacy" | "native") {
   const names: readonly string[] = format === "legacy" ? legacyAssetNames : nativeAssetNames;
   const preview = record(tag, base, true, 2);
-  preview.assets = preview.assets.filter((asset) => names.includes(asset.name));
+  preview.assets = names.map((name) => ({
+    name,
+    state: "uploaded",
+    digest: "sha256:" + "c".repeat(64),
+    uploader: { login: "github-actions[bot]" },
+  }));
   preview.body = releaseNotes(tag, base, true, format).body;
   return { names, preview };
 }
@@ -60,7 +65,7 @@ function fixture() {
     isAncestor: () => Effect.succeed(true),
     assertFullHistory: () => Effect.void,
     assetDigests: (_sha, names) =>
-      Effect.succeed(Object.fromEntries(names.map((name) => [name, expected[name]!]))),
+      Effect.succeed(Object.fromEntries(names.map((name) => [name, "sha256:" + "c".repeat(64)]))),
     generatedAssetNames: () => Effect.succeed(assetNames),
     photoFirstSchema: () => Effect.succeed(true),
   };
@@ -328,7 +333,7 @@ test("adding the SDR file to a historical native preview prevents pruning", asyn
 test("current stable publication requires all four assets", async () => {
   const f = fixture();
   const r = record("v1", tip);
-  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14.agc");
+  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14-r16.agc");
   f.records.set("v1", r);
   expect(
     Exit.isFailure(await Effect.runPromiseExit(publish(f.repo, f.api, tip, expected, "v1"))),
@@ -358,7 +363,7 @@ test("historical five-file previews retain their original notes and assets", asy
   const f = fixture();
   f.refs.set(tag, base);
   f.records.set("v1", record("v1", tip));
-  const preview = record(tag, base, true, 2);
+  const preview = historicalPreview("native").preview;
   preview.body = releaseNotes(tag, base, true, "video").body;
   preview.assets.push({
     name: videoAssetNames[4],
@@ -374,12 +379,17 @@ test("historical five-file previews retain their original notes and assets", asy
   expect(f.deleted).toEqual([2]);
 });
 
-test("four-file layouts cannot masquerade as each other by editing notes", async () => {
-  for (const marked of [true, false]) {
+test("new layout requires marker and cannot use historical notes", async () => {
+  for (const [marked, oldNotes] of [
+    [false, false],
+    [true, true],
+  ] as const) {
     const f = fixture();
     f.refs.set(tag, base);
     f.records.set("v1", record("v1", tip));
-    f.records.set(tag, marked ? historicalPreview("native").preview : record(tag, base, true, 2));
+    const preview = record(tag, base, true, 2);
+    if (oldNotes) preview.body = releaseNotes(tag, base, true, "native").body;
+    f.records.set(tag, preview);
     f.repo.photoFirstSchema = () => Effect.succeed(marked);
     await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
     expect(f.deleted).toEqual([]);

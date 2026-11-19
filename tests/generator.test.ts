@@ -10,14 +10,14 @@ test("same input yields exactly the same three artifacts and digest manifest", (
   expect([...first.keys()].sort()).toEqual([
     "Basile-AGC-Camera-photo-look.xmp",
     "Basile-AGC-Camera-profile.zip",
-    "Basile-S23-AGC9.2-V14.agc",
+    "Basile-S23-AGC9.2-V14-r16.agc",
     "manifest.json",
   ]);
 });
 test("published GCam preserves the complete photo and video baseline", async () => {
   const source = await Bun.file(new URL("../data/gcam-92-v14.xml", import.meta.url)).text();
   const result = generate(profile, "gcam");
-  expect(result.get("Basile-S23-AGC9.2-V14.agc")).toBe(
+  expect(result.get("Basile-S23-AGC9.2-V14-r16.agc")).toBe(
     source.replace(
       '<string name="pref_camera_recordlocation_key">0</string>',
       '<string name="pref_camera_recordlocation_key">1</string>',
@@ -33,7 +33,7 @@ test("published GCam preserves the complete photo and video baseline", async () 
 });
 test("variant affects both display names, requested quality and digests without adding raw settings", () => {
   const variants = generate({ ...profile, name: "Basile & Field", jpegQuality: 92 });
-  const agc = variants.get("Basile-S23-AGC9.2-V14.agc")!;
+  const agc = variants.get("Basile-S23-AGC9.2-V14-r16.agc")!;
   expect(agc).toContain("Basile &amp; Field");
   expect(agc).toContain('name="pref_qjpg_key">92</string>');
   expect(variants.get("Basile-AGC-Camera-photo-look.xmp")).toContain("Basile &amp; Field");
@@ -64,4 +64,18 @@ test("standalone requires manual icon selection rather than an invented XMP pref
   expect(
     manifest.outputs.find((entry) => entry.file.endsWith(".agc"))?.launcherIcon,
   ).toBeUndefined();
+});
+
+test("preserves verified original camera defaults without sharing-app history", () => {
+  const xml = String(generate(profile, "gcam").get("Basile-S23-AGC9.2-V14-r16.agc"));
+  for (const [key, value] of [
+    ["pref_camera_recordlocation_key", "1"],
+    ["pref_p3_key", "1"],
+    ["pref_gallery_key", "1"],
+    ["pref_camera_sounds_key", "0"],
+    ["pref_camera_single_shot_sound_key", "0"],
+    ["key_social_share_opt_in", "0"],
+  ])
+    expect(xml).toContain('<string name="' + key + '">' + value + "</string>");
+  expect(xml).toContain('<boolean name="enable_social_share" value="false" />');
 });

@@ -72,3 +72,9 @@ Do not contribute private photos, videos, original settings dumps, APKs, librari
 ## CI releases
 
 See [release triggers, commit-date naming, assets and ancestry-only pruning](RELEASES.md). PR validation has no publish permissions.
+
+## Revision and stale artifacts
+
+The public GCam filename includes deterministic revision r16, also recorded in the manifest. Bump this revision for a changed published camera profile so downloads/imports do not overwrite an older revision. Private-source recovery retains its original stable output filename.
+
+CI removes only regular generator-owned obsolete GCam filenames inside this checkout’s generated directory, then requires a clean Git diff there. A committed stale artifact therefore fails CI and must be removed in the PR, rather than being hidden by regeneration. Arbitrary output directories, private originals, standalone formats and historical GitHub releases are never deleted by this cleanup.

@@ -13,7 +13,12 @@ export const legacyAssetNames = [
 /** Historical releases with the native profile but only one GCam preset. */
 export const nativeAssetNames = [...legacyAssetNames, "Basile-AGC-Camera-profile.zip"] as const;
 /** Only these generated artifacts may be attached by the current publisher. */
-export const assetNames = nativeAssetNames;
+export const assetNames = [
+  "Basile-S23-AGC9.2-V14-r16.agc",
+  "Basile-AGC-Camera-photo-look.xmp",
+  "manifest.json",
+  "Basile-AGC-Camera-profile.zip",
+] as const;
 /** Historical five-file releases with the optional SDR preset. */
 export const videoAssetNames = [
   ...nativeAssetNames,
@@ -238,10 +243,10 @@ export function prune(
         : exactNames(historicalNames, legacyAssetNames)
           ? "legacy"
           : exactNames(historicalNames, nativeAssetNames)
-            ? (yield* repo.photoFirstSchema(previewSha))
+            ? "native"
+            : exactNames(historicalNames, assetNames) && (yield* repo.photoFirstSchema(previewSha))
               ? "photo"
-              : "native"
-            : undefined;
+              : undefined;
       if (!format) continue;
       const historicalAssets = formats[format];
       const notes = releaseNotes(tag, previewSha, true, format);

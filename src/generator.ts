@@ -98,7 +98,7 @@ export function generate(
     const source = loadGcam(selected);
     const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
     files.set(
-      "Basile-S23-AGC9.2-V14.agc",
+      "Basile-S23-AGC9.2-V14-r16.agc",
       decoder.decode(fromOriginal(source, "sounds-off-geotag")),
     );
   }
@@ -113,6 +113,7 @@ export function generate(
       {
         schemaVersion: 4,
         releaseLayout: "photo-first-v1",
+        configRevision: "r16",
         device: "Samsung Galaxy S23 Snapdragon (SM-S911B)",
         profile: selected,
         outputs: Array.from(files, ([file, bytes]) => ({
