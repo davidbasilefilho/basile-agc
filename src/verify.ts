@@ -7,6 +7,8 @@ import { Effect } from "effect";
 import { unzipSync, strFromU8 } from "fflate";
 import { SaxesParser } from "saxes";
 
+import { gcamArtifactName } from "./config-revision";
+
 type Xml = {
   name: string;
   attrs: Record<string, string>;
@@ -17,7 +19,7 @@ type Xml = {
 type Atomic = string | string[];
 type Preferences = Map<string, [string, Atomic]>;
 const names = [
-  "Basile-S23-AGC9.2-V14-r16.agc",
+  gcamArtifactName,
   "Basile-AGC-Camera-photo-look.xmp",
   "Basile-AGC-Camera-profile.zip",
 ] as const;

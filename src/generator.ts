@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 import { SaxesParser } from "saxes";
 
+import { configRevision, gcamArtifactName } from "./config-revision";
 import { fromOriginal } from "./lossless";
 import { nativeProfileZip } from "./native-profile";
 import { standaloneXmp } from "./standalone";
@@ -97,10 +98,7 @@ export function generate(
   if (target === "gcam" || target === "all") {
     const source = loadGcam(selected);
     const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-    files.set(
-      "Basile-S23-AGC9.2-V14-r16.agc",
-      decoder.decode(fromOriginal(source, "sounds-off-geotag")),
-    );
+    files.set(gcamArtifactName, decoder.decode(fromOriginal(source, "sounds-off-geotag")));
   }
   if (target === "standalone" || target === "all") {
     files.set("Basile-AGC-Camera-profile.zip", nativeProfileZip(selected.name));
@@ -113,7 +111,7 @@ export function generate(
       {
         schemaVersion: 4,
         releaseLayout: "photo-first-v1",
-        configRevision: "r16",
+        configRevision,
         device: "Samsung Galaxy S23 Snapdragon (SM-S911B)",
         profile: selected,
         outputs: Array.from(files, ([file, bytes]) => ({

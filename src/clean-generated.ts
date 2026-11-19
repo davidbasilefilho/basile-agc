@@ -4,8 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import { Effect } from "effect";
 
+import { gcamArtifactName } from "./config-revision";
+
 const root = fileURLToPath(new URL("../generated/", import.meta.url));
-const active = "Basile-S23-AGC9.2-V14-r16.agc";
+const active = gcamArtifactName;
 
 /** Identify only obsolete generator-owned GCam filenames, never arbitrary output files. */
 export function isObsoleteArtifact(name: string): boolean {

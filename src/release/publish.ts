@@ -1,5 +1,6 @@
 import { Data, Effect } from "effect";
 
+import { gcamArtifactName } from "../config-revision";
 import { isStableTag, managedMarker, planPrune, prereleaseTag, type Repository } from "./policy";
 
 /** Fixed repository boundary for CI writes. */
@@ -14,7 +15,7 @@ export const legacyAssetNames = [
 export const nativeAssetNames = [...legacyAssetNames, "Basile-AGC-Camera-profile.zip"] as const;
 /** Only these generated artifacts may be attached by the current publisher. */
 export const assetNames = [
-  "Basile-S23-AGC9.2-V14-r16.agc",
+  gcamArtifactName,
   "Basile-AGC-Camera-photo-look.xmp",
   "manifest.json",
   "Basile-AGC-Camera-profile.zip",
