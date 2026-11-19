@@ -1,5 +1,5 @@
 {
   "name": "Basile",
   "jpegQuality": 97,
-  "videoHdr": "prefer-where-supported"
+  "videoHdr": "preserve-source"
 }

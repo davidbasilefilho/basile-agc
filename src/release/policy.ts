@@ -64,6 +64,8 @@ export interface Repository {
   isAncestor(ancestor: string, descendant: string): Effect.Effect<boolean, PolicyError>;
   /** List safe regular-file assets from the exact historical generated directory. */
   generatedAssetNames(sha: string): Effect.Effect<readonly string[], PolicyError>;
+  /** Identify the committed photo-first release schema. */
+  photoFirstSchema(sha: string): Effect.Effect<boolean, PolicyError>;
   /** Hash bytes of generated assets at the specified historical commit. */
   assetDigests(
     sha: string,
@@ -203,6 +205,29 @@ export class GitRepository implements Repository {
         }
         return [...names].sort();
       });
+    });
+  }
+
+  /** Read the fixed schema marker from the historical tree, never the working tree. */
+  photoFirstSchema(sha: string): Effect.Effect<boolean, PolicyError> {
+    return Effect.gen({ self: this }, function* () {
+      yield* checked(() => ensureSha(sha));
+      const { stdout } = yield* this.run([
+        "ls-tree",
+        "-z",
+        `${sha}^{commit}`,
+        "--",
+        "src/release/photo-first.marker",
+      ]);
+      const entry = stdout.toString("utf8");
+      if (entry === "") return false;
+      const match = /^100644 blob ([0-9a-f]{40})\tsrc\/release\/photo-first\.marker\0$/.exec(entry);
+      if (!match)
+        return yield* Effect.fail(new PolicyError({ message: "Invalid schema marker entry" }));
+      const content = yield* this.run(["cat-file", "blob", match[1]!]);
+      if (content.stdout.toString("utf8") !== "basile-agc-photo-first-v1\n")
+        return yield* Effect.fail(new PolicyError({ message: "Invalid schema marker content" }));
+      return true;
     });
   }
 

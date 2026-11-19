@@ -1,6 +1,6 @@
 # What CI builds, and what stays private
 
-CI reads the versioned `data/gcam-92-v14.xml`, applies the two normal-video overlays, and independently validates the resulting Android preference maps and hashes before publishing. It never downloads a personal export, embeds a signed link, or needs anyone’s phone. The original private export is **not** in Git. Public builds are candidates for the base Snapdragon S23 on AGC9.2 V14.0, not a claim that the phone can record every requested combination.
+CI reads the versioned `data/gcam-92-v14.xml`, applies the explicit sound-off and location-on defaults, and independently validates the resulting Android preference maps and hashes before publishing. It never downloads a personal export, embeds a signed link, or needs anyone’s phone. The original private export is **not** in Git. Public builds are candidates for the base Snapdragon S23 on AGC9.2 V14.0, not a claim that the phone can record every requested combination.
 
 ## Full-reference audit
 
@@ -14,6 +14,8 @@ The reviewed baseline SHA-256 is `e35f89ad9dc2c5597b28170b805fd4182c5fc1564d9d0b
 
 ## What the release overlays add
 
-The default asset requests FHD30 HDR; its optional sibling requests FHD60 SDR. With the shipped project profile, each changes only the existing resolution and normal FPS selection and inserts two string preferences (HDR switch and alternate normal-FPS accessor). Thus each generated XML has 1,320 keys. Every other existing setting, including both shutter sounds off and video stabilization on, is preserved. Neither overlay changes capability flags, 4K/Cinematic/Video Boost controls, photo processing or the standalone profile.
+The photo-first asset preserves all 1,318 reviewed source preferences, including baseline video controls and the two disabled shutter sounds. No HDR/FPS preferences are inserted. Public location recording is explicitly enabled by the generator; a private `--source` copy preserves the owner's existing choice. Photo tuning is not changed by this consolidation.
 
-Use the [source-preserving private generator](../README.md) for an exact rollback to your own export, or [GitHub Releases](https://github.com/davidbasilefilho/basile-agc/releases) for this reviewed public build.
+Use the [source-preserving private generator](USAGE.md) for an exact rollback to your own export, or [GitHub Releases](https://github.com/davidbasilefilho/basile-agc/releases) for this reviewed public build.
+
+The immutable reference keeps location recording off. The current public generator explicitly overlays only the verified location-recording string to "1", as requested; it does not restore any coordinates or history. Future photos may contain GPS when permissions allow.

@@ -8,6 +8,7 @@ import {
   checkedAssets,
   legacyAssetNames,
   nativeAssetNames,
+  videoAssetNames,
   owns,
   publish,
   prune,
@@ -43,7 +44,12 @@ function record(name: string, sha: string, pre = false, id = 1): RemoteRelease {
 function historicalPreview(format: "legacy" | "native") {
   const names: readonly string[] = format === "legacy" ? legacyAssetNames : nativeAssetNames;
   const preview = record(tag, base, true, 2);
-  preview.assets = preview.assets.filter((asset) => names.includes(asset.name));
+  preview.assets = names.map((name) => ({
+    name,
+    state: "uploaded",
+    digest: "sha256:" + "c".repeat(64),
+    uploader: { login: "github-actions[bot]" },
+  }));
   preview.body = releaseNotes(tag, base, true, format).body;
   return { names, preview };
 }
@@ -59,8 +65,9 @@ function fixture() {
     isAncestor: () => Effect.succeed(true),
     assertFullHistory: () => Effect.void,
     assetDigests: (_sha, names) =>
-      Effect.succeed(Object.fromEntries(names.map((name) => [name, expected[name]!]))),
+      Effect.succeed(Object.fromEntries(names.map((name) => [name, "sha256:" + "c".repeat(64)]))),
     generatedAssetNames: () => Effect.succeed(assetNames),
+    photoFirstSchema: () => Effect.succeed(true),
   };
   const api: ReleaseService = {
     releases: () => Effect.succeed([...records.values()]),
@@ -286,6 +293,7 @@ test("untouched native-era previews still prune with their exact original four-f
   f.records.set("v1", record("v1", tip));
   f.records.set(tag, preview);
   f.repo.generatedAssetNames = () => Effect.succeed(names);
+  f.repo.photoFirstSchema = () => Effect.succeed(false);
   await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
   expect(f.deleted).toEqual([2]);
   expect(f.refs.get(tag)).toBe(base);
@@ -299,6 +307,7 @@ test("old native notes and assets cannot downgrade a current five-file preview",
   f.refs.set(tag, base);
   f.records.set("v1", record("v1", tip));
   f.records.set(tag, historicalPreview("native").preview);
+  f.repo.generatedAssetNames = () => Effect.succeed(videoAssetNames);
   await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
   expect(f.deleted).toEqual([]);
 });
@@ -308,9 +317,12 @@ test("adding the SDR file to a historical native preview prevents pruning", asyn
   f.refs.set(tag, base);
   f.records.set("v1", record("v1", tip));
   const { preview } = historicalPreview("native");
-  const sdr = record(tag, base, true, 2).assets.find(
-    (a) => a.name === "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
-  )!;
+  const sdr = {
+    name: videoAssetNames[4],
+    state: "uploaded",
+    digest: "sha256:" + "c".repeat(64),
+    uploader: { login: "github-actions[bot]" },
+  };
   preview.assets.push(sdr);
   f.records.set(tag, preview);
   f.repo.generatedAssetNames = () => Effect.succeed(nativeAssetNames);
@@ -318,21 +330,21 @@ test("adding the SDR file to a historical native preview prevents pruning", asyn
   expect(f.deleted).toEqual([]);
 });
 
-test("current stable publication requires all five assets", async () => {
+test("current stable publication requires all four assets", async () => {
   const f = fixture();
   const r = record("v1", tip);
-  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14-FHD60-SDR.agc");
+  r.assets = r.assets.filter((a) => a.name !== "Basile-S23-AGC9.2-V14-r16.agc");
   f.records.set("v1", r);
   expect(
     Exit.isFailure(await Effect.runPromiseExit(publish(f.repo, f.api, tip, expected, "v1"))),
   ).toBe(true);
   expect(f.deleted).toEqual([]);
-  expect(assetNames).toHaveLength(5);
+  expect(assetNames).toHaveLength(4);
 });
 
 test("incomplete or invalid current digests fail before publication and pruning", async () => {
   for (const wrong of [
-    Object.fromEntries(nativeAssetNames.map((name) => [name, expected[name]!])),
+    Object.fromEntries(legacyAssetNames.map((name) => [name, expected[name]!])),
     { ...expected, "manifest.json": "not-a-digest" },
     { ...expected, "other.agc": "sha256:" + "d".repeat(64) },
   ]) {
@@ -345,4 +357,53 @@ test("incomplete or invalid current digests fail before publication and pruning"
     ).toBe(true);
     expect([...f.created, ...f.deleted]).toEqual([]);
   }
+});
+
+test("historical five-file previews retain their original notes and assets", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  const preview = historicalPreview("native").preview;
+  preview.body = releaseNotes(tag, base, true, "video").body;
+  preview.assets.push({
+    name: videoAssetNames[4],
+    state: "uploaded",
+    digest: "sha256:" + "c".repeat(64),
+    uploader: { login: "github-actions[bot]" },
+  });
+  f.records.set(tag, preview);
+  f.repo.generatedAssetNames = () => Effect.succeed(videoAssetNames);
+  f.repo.assetDigests = (_sha, names) =>
+    Effect.succeed(Object.fromEntries(names.map((name) => [name, "sha256:" + "c".repeat(64)])));
+  await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+  expect(f.deleted).toEqual([2]);
+});
+
+test("new layout requires marker and cannot use historical notes", async () => {
+  for (const [marked, oldNotes] of [
+    [false, false],
+    [true, true],
+  ] as const) {
+    const f = fixture();
+    f.refs.set(tag, base);
+    f.records.set("v1", record("v1", tip));
+    const preview = record(tag, base, true, 2);
+    if (oldNotes) preview.body = releaseNotes(tag, base, true, "native").body;
+    f.records.set(tag, preview);
+    f.repo.photoFirstSchema = () => Effect.succeed(marked);
+    await Effect.runPromise(prune(f.repo, f.api, "v1", tip, expected));
+    expect(f.deleted).toEqual([]);
+  }
+});
+
+test("failed marker reads abort pruning", async () => {
+  const f = fixture();
+  f.refs.set(tag, base);
+  f.records.set("v1", record("v1", tip));
+  f.records.set(tag, record(tag, base, true, 2));
+  f.repo.photoFirstSchema = () => Effect.fail(new PolicyError({ message: "marker unavailable" }));
+  expect(
+    Exit.isFailure(await Effect.runPromiseExit(prune(f.repo, f.api, "v1", tip, expected))),
+  ).toBe(true);
+  expect(f.deleted).toEqual([]);
 });

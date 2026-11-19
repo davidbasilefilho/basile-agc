@@ -14,33 +14,17 @@ function editsFor(overlay: OriginalOverlay) {
   if (overlay === "none") return new Map<string, Edit>();
   const edits = new Map(soundEdits);
   if (overlay === "sounds-off") return edits;
-  if (overlay !== "video-hdr30" && overlay !== "video-sdr60") fail();
-  // The HDR setting is a string-backed normal-video control; the V14
-  // default is off. Write the selection explicitly for both candidates so
-  // applying one after the other cannot retain the preceding HDR selection.
-  const hdr = overlay === "video-hdr30";
-  edits.set("pref_video_amethyst_key", {
-    value: hdr ? "1" : "0",
-    allowed: toggle,
-    missing: "insert",
-  });
-  edits.set("pref_video_resolution", {
-    value: "RES_1080P",
-    allowed: ["RES_1080P", "RES_2160P", "RES_4320P"],
-  });
-  const requested = hdr ? "FPS_30" : "FPS_60";
-  const rates = ["FPS_AUTO", "FPS_24", "FPS_30", "FPS_60"];
-  // V14 chooses the normal video FPS accessor at runtime. Do not change
-  // the distinct 4K, Video Boost or Cinematic preferences or any capabilities.
-  edits.set("pref_video_fps_p2018_key", { value: requested, allowed: rates });
-  edits.set("pref_video_fps_key", { value: requested, allowed: rates, missing: "insert" });
-  return edits;
+  if (overlay === "sounds-off-geotag") {
+    edits.set("pref_camera_recordlocation_key", { value: "1", allowed: toggle });
+    return edits;
+  }
+  fail();
 }
 const maxBytes = 8 * 1024 * 1024;
 const name = "Basile-S23-AGC9.2-V14.agc";
 
-/** Private recovery options: preserve the original or request only the named sound and video settings. */
-export type OriginalOverlay = "none" | "sounds-off" | "video-hdr30" | "video-sdr60";
+/** Private recovery options: preserve the original or request only the named sound settings. */
+export type OriginalOverlay = "none" | "sounds-off" | "sounds-off-geotag";
 
 function fail(): never {
   throw new Error("Unsupported, ambiguous, or invalid Android preference map; no output written.");
@@ -50,8 +34,6 @@ function fail(): never {
 export function fromOriginal(bytes: Uint8Array, overlay: OriginalOverlay = "none"): Uint8Array {
   if (!bytes.length || bytes.length > maxBytes) fail();
   const edits = editsFor(overlay);
-  const video = overlay === "video-hdr30" || overlay === "video-sdr60";
-  const build = new Map<string, string>();
   let mapEnd = -1;
   const source = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   const parser = new SaxesParser();
@@ -97,13 +79,6 @@ export function fromOriginal(bytes: Uint8Array, overlay: OriginalOverlay = "none
   parser.on("text", content);
   parser.on("cdata", content);
   parser.on("closetag", () => {
-    if (
-      depth === 2 &&
-      kind === "string" &&
-      video &&
-      (key === "info_version_key" || key === "info_model_key")
-    )
-      build.set(key, text);
     const edit = depth === 2 ? edits.get(key) : undefined;
     if (edit) {
       if (!edit.allowed.includes(text)) fail();
@@ -118,12 +93,6 @@ export function fromOriginal(bytes: Uint8Array, overlay: OriginalOverlay = "none
   });
   parser.write(source).close();
   if (roots !== 1 || !seen.size || mapEnd < 0) fail();
-  if (
-    video &&
-    (build.get("info_model_key") !== "SM-S911B" ||
-      !/^AGC9\.2 V14\.0 \(e23c52c7\)(?: |$)/.test(build.get("info_version_key") ?? ""))
-  )
-    fail();
   const additions: string[] = [];
   for (const [k, edit] of edits) {
     if (seen.has(k)) continue;
@@ -183,13 +152,7 @@ export function useOriginal(
         !(await stat(dir)).isDirectory()
       )
         throw new Error("Choose an existing private output directory outside the checkout.");
-      const destName =
-        overlay === "video-hdr30"
-          ? name.replace(".agc", "-FHD30-HDR-candidate.agc")
-          : overlay === "video-sdr60"
-            ? name.replace(".agc", "-FHD60-SDR-candidate.agc")
-            : name;
-      const destination = join(dir, destName);
+      const destination = join(dir, name);
       if ((await realpath(source)) === destination)
         throw new Error("Never overwrite or validate the input against itself.");
       const original = await boundedFile(source);

@@ -1,37 +1,21 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
+  "releaseLayout": "photo-first-v1",
+  "configRevision": "r16",
   "device": "Samsung Galaxy S23 Snapdragon (SM-S911B)",
   "profile": {
     "name": "Basile",
     "jpegQuality": 97,
-    "videoHdr": "prefer-where-supported"
+    "videoHdr": "preserve-source"
   },
   "outputs": [
     {
-      "file": "Basile-S23-AGC9.2-V14.agc",
-      "sha256": "3f465352991b6af552735a34759fc7b08fd4b07222ecea338f00034803f2b261",
+      "file": "Basile-S23-AGC9.2-V14-r16.agc",
+      "sha256": "bec9970e5ef27e75d6fa52eeda7ad3b0d4ba169e13eb7521b9e09815f9f0ce0e",
       "scope": "AGC9.2 V14.0 privacy-reviewed camera preferences; capture candidate",
       "physicalDeviceVerified": false,
-      "videoRequest": {
-        "mode": "normal",
-        "resolution": "FHD",
-        "fps": 30,
-        "hdr10Bit": true
-      },
-      "verification": "target APK controls verified; actual capture mode and device stability unverified"
-    },
-    {
-      "file": "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
-      "sha256": "80b96d99fa372bd3a06a6823256fadbfb26105fba7ebacfd38a959018d389f31",
-      "scope": "AGC9.2 V14.0 privacy-reviewed camera preferences; capture candidate",
-      "physicalDeviceVerified": false,
-      "videoRequest": {
-        "mode": "normal",
-        "resolution": "FHD",
-        "fps": 60,
-        "hdr10Bit": false
-      },
-      "verification": "target APK controls verified; actual capture mode and device stability unverified"
+      "videoPolicy": "preserve-source",
+      "verification": "photo-first baseline; physical capture remains device-dependent"
     },
     {
       "file": "Basile-AGC-Camera-profile.zip",

@@ -15,6 +15,9 @@ jobs:
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
+      - run: bun src/clean-generated.ts
+      # Cleanup must expose committed stale artifacts rather than hide drift.
+      - run: git diff --exit-code -- generated
       - run: bun run check
       # Compare the checked-in artifacts before any generation can overwrite drift.
       - run: bun run validate

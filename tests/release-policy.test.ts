@@ -292,6 +292,21 @@ describe("read-only release policy with real Git DAGs", () => {
     expectPolicyFailure(fixture.repo.generatedAssetNames(link));
   });
 
+  test("photo-first marker comes from the exact commit and rejects altered content", () => {
+    expect(Effect.runSync(fixture.repo.photoFirstSchema(fixture.first))).toBe(false);
+    mkdirSync(join(fixture.path, "src", "release"), { recursive: true });
+    const marker = join(fixture.path, "src", "release", "photo-first.marker");
+    writeFileSync(marker, "basile-agc-photo-first-v1\n");
+    fixture.git(["add", "src"]);
+    const marked = fixture.commit("photo first", "2026-01-05T00:00:00Z");
+    writeFileSync(marker, "other\n");
+    expect(Effect.runSync(fixture.repo.photoFirstSchema(marked))).toBe(true);
+    fixture.git(["add", "src"]);
+    const invalid = fixture.commit("invalid marker", "2026-01-06T00:00:00Z");
+    expectPolicyFailure(fixture.repo.photoFirstSchema(invalid));
+    expectPolicyFailure(fixture.repo.photoFirstSchema("a".repeat(40)));
+  });
+
   test("historical digest failures and unsafe names are typed and fail closed", () => {
     for (const names of [
       ["../config.agc"],
