@@ -14,6 +14,6 @@ The reviewed baseline SHA-256 is `e35f89ad9dc2c5597b28170b805fd4182c5fc1564d9d0b
 
 ## What the release overlays add
 
-The default asset requests FHD30 HDR; its optional sibling requests FHD60 SDR. With the shipped project profile, each changes only the existing resolution and normal FPS selection and inserts two string preferences (HDR switch and alternate normal-FPS accessor). Thus each generated XML has 1,320 keys. Every other existing setting, including both shutter sounds off and video stabilization on, is preserved. Neither overlay changes capability flags, 4K/Cinematic/Video Boost controls, photo processing or the standalone profile.
+The photo-first asset preserves all 1,318 reviewed source preferences, including baseline video controls and the two disabled shutter sounds. No HDR/FPS preferences are inserted. Public location recording remains disabled; a private `--source` copy preserves the owner's existing opt-in. Photo tuning is not changed by this consolidation.
 
 Use the [source-preserving private generator](../README.md) for an exact rollback to your own export, or [GitHub Releases](https://github.com/davidbasilefilho/basile-agc/releases) for this reviewed public build.

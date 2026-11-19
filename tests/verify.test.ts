@@ -10,7 +10,6 @@ import { verifyArtifacts } from "../src/verify";
 
 let root = "";
 const gcam = "Basile-S23-AGC9.2-V14.agc";
-const sdr = "Basile-S23-AGC9.2-V14-FHD60-SDR.agc";
 const xmp = "Basile-AGC-Camera-photo-look.xmp";
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "basile-verify-"));
@@ -35,14 +34,11 @@ async function change(file: string, mutate: (text: string) => string, fixDigest:
     await writeFile(path, JSON.stringify(manifest));
   }
 }
-test("independent parser verifies both full typed maps and standalone assets", async () => {
+test("independent parser verifies the full typed map and standalone assets", async () => {
   const baseline = await readFile(join(root, "data/gcam-92-v14.xml"), "utf8");
   const count = [...baseline.matchAll(/<(?:string|boolean|int|long|float|set)\s+name=/g)].length;
-  const added = ["pref_video_amethyst_key", "pref_video_fps_key"].filter(
-    (key) => !baseline.includes('name="' + key + '"'),
-  ).length;
   expect(count).toBeGreaterThan(1100);
-  expect(await Effect.runPromise(verifyArtifacts(root))).toBe(count + added);
+  expect(await Effect.runPromise(verifyArtifacts(root))).toBe(count);
 });
 test("validator rejects changed bits even when the XML still parses", async () => {
   await change(gcam, (s) => s + "\n", false);
@@ -89,11 +85,14 @@ test("validator rejects substituted native ZIP even after its digest is recomput
   );
 });
 
-test("validator rejects wrong SDR FPS even with a newly valid digest", async () => {
+test("validator rejects changed source video FPS even with a newly valid digest", async () => {
   await change(
-    sdr,
+    gcam,
     (s) =>
-      s.replace('name="pref_video_fps_p2018_key">FPS_60', 'name="pref_video_fps_p2018_key">FPS_30'),
+      s.replace(
+        'name="pref_video_fps_p2018_key">FPS_AUTO',
+        'name="pref_video_fps_p2018_key">FPS_30',
+      ),
     true,
   );
   expect(await Effect.runPromise(Effect.result(verifyArtifacts(root)))).toHaveProperty(
@@ -106,7 +105,7 @@ test("validator rejects a false phone verification claim and switched manifest m
   const original = await readFile(file, "utf8");
   for (const invalid of [
     original.replace('"physicalDeviceVerified": false', '"physicalDeviceVerified": true'),
-    original.replace('"fps": 30', '"fps": 60'),
+    original.replace('"videoPolicy": "preserve-source"', '"videoPolicy": "force-hdr"'),
   ]) {
     await writeFile(file, invalid);
     expect(await Effect.runPromise(Effect.result(verifyArtifacts(root)))).toHaveProperty(

@@ -11,7 +11,7 @@ import { standaloneXmp } from "./standalone";
 export interface Profile {
   name: string;
   jpegQuality: number;
-  videoHdr: "prefer-where-supported";
+  videoHdr: "preserve-source";
 }
 
 /** Verified serializer targets; a standalone photo look is not a whole-camera configuration. */
@@ -38,8 +38,8 @@ export function parseProfile(raw: unknown): Profile {
     jpegQuality > 100
   )
     throw new Error("JPEG quality must be an integer 1 to 100");
-  if (videoHdr !== "prefer-where-supported")
-    throw new Error("Expected prefer-where-supported as videoHdr policy");
+  if (videoHdr !== "preserve-source")
+    throw new Error("Expected preserve-source as videoHdr policy");
   return { name, jpegQuality, videoHdr };
 }
 
@@ -97,11 +97,7 @@ export function generate(
   if (target === "gcam" || target === "all") {
     const source = loadGcam(selected);
     const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-    files.set("Basile-S23-AGC9.2-V14.agc", decoder.decode(fromOriginal(source, "video-hdr30")));
-    files.set(
-      "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
-      decoder.decode(fromOriginal(source, "video-sdr60")),
-    );
+    files.set("Basile-S23-AGC9.2-V14.agc", decoder.decode(fromOriginal(source, "sounds-off")));
   }
   if (target === "standalone" || target === "all") {
     files.set("Basile-AGC-Camera-profile.zip", nativeProfileZip(selected.name));
@@ -112,7 +108,8 @@ export function generate(
     "manifest.json",
     JSON.stringify(
       {
-        schemaVersion: 3,
+        schemaVersion: 4,
+        releaseLayout: "photo-first-v1",
         device: "Samsung Galaxy S23 Snapdragon (SM-S911B)",
         profile: selected,
         outputs: Array.from(files, ([file, bytes]) => ({
@@ -142,14 +139,8 @@ export function generate(
           physicalDeviceVerified: false,
           ...(file.endsWith(".agc")
             ? {
-                videoRequest: {
-                  mode: "normal",
-                  resolution: "FHD",
-                  fps: file.endsWith("-FHD60-SDR.agc") ? 60 : 30,
-                  hdr10Bit: !file.endsWith("-FHD60-SDR.agc"),
-                },
-                verification:
-                  "target APK controls verified; actual capture mode and device stability unverified",
+                videoPolicy: "preserve-source",
+                verification: "photo-first baseline; physical capture remains device-dependent",
               }
             : { videoHdrDefault: "not part of the standalone profile format" }),
         })),

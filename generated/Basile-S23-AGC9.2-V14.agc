@@ -956,7 +956,7 @@
     <string name="pref_storage_saver_auto_disable">0</string>
     <string name="lib_smoothness_key">Off (as in library)</string>
     <string name="lib_luma_dh_sabre_l1b_key">Off (as in library)</string>
-    <string name="pref_video_fps_p2018_key">FPS_30</string>
+    <string name="pref_video_fps_p2018_key">FPS_AUTO</string>
     <string name="pref_vibro_key">1</string>
     <string name="lib_raisr_large_key">Off (as in library)</string>
     <string name="pref_camera_raw_output_key">0</string>
@@ -1331,11 +1331,9 @@
     <string name="lib_custom_1_key_p0_0_value"></string>
     <string name="pref_bitrate_key_1">18</string>
     <string name="lib_pref_frame_count_key_p0_3">4</string>
-    <string name="pref_video_resolution">RES_1080P</string>
+    <string name="pref_video_resolution">RES_2160P</string>
     <string name="lib_pref_frame_count_key_p0_2">5</string>
     <string name="lib_pref_frame_count_key_p0_1">4</string>
     <string name="lib_pref_frame_count_key_p0_0">5</string>
     <string name="pref_camera_advice_settings">1</string>
-    <string name="pref_video_amethyst_key">1</string>
-    <string name="pref_video_fps_key">FPS_30</string>
 </map>

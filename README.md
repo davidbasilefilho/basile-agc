@@ -1,14 +1,13 @@
 # Basile AGC
 
-One balanced look for the Snapdragon Galaxy S23 (SM-S911B). Two apps by BigKaka share a name, **not** a config format. [**Download the verified CI build**](https://github.com/davidbasilefilho/basile-agc/releases/tag/pre-20261118T220555Z-fe2c0332ab5f220cbe8267f3bae8e4995e3187f9) · [All releases](https://github.com/davidbasilefilho/basile-agc/releases). Older four-file releases contain a partial GCam preset, not these builds.
+One balanced, photo-first look for the Snapdragon Galaxy S23 (SM-S911B). Two apps by BigKaka share a name, **not** a config format. [**Download from GitHub Releases**](https://github.com/davidbasilefilho/basile-agc/releases). Check the release notes: historical previews contain different layouts, including experimental video candidates.
 
-| App                             | Download/build asset                                                                                                                                                                                      | What to use it for                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| GCam **AGC9.2.14 V14.0**        | [Basile-S23-AGC9.2-V14.agc](https://github.com/davidbasilefilho/basile-agc/releases/download/pre-20261118T220555Z-fe2c0332ab5f220cbe8267f3bae8e4995e3187f9/Basile-S23-AGC9.2-V14.agc)                     | **Default: FHD30, 10-bit HDR requested.**                                              |
-| Same GCam mod                   | [Basile-S23-AGC9.2-V14-FHD60-SDR.agc](https://github.com/davidbasilefilho/basile-agc/releases/download/pre-20261118T220555Z-fe2c0332ab5f220cbe8267f3bae8e4995e3187f9/Basile-S23-AGC9.2-V14-FHD60-SDR.agc) | Optional **FHD60 SDR** request for smoother movement.                                  |
-| Standalone **AGC Camera 1.8.6** | [Basile-AGC-Camera-profile.zip](https://github.com/davidbasilefilho/basile-agc/releases/download/pre-20261118T220555Z-fe2c0332ab5f220cbe8267f3bae8e4995e3187f9/Basile-AGC-Camera-profile.zip)             | Native v4 profile for Ajustes → Perfis; neutral Photo, Portrait and Night adjustments. |
+| App                             | Download/build asset            | What to use it for                                                                     |
+| ------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
+| GCam **AGC9.2.14 V14.0**        | `Basile-S23-AGC9.2-V14.agc`     | One photo-first configuration; baseline video controls preserved, camera sounds off.   |
+| Standalone **AGC Camera 1.8.6** | `Basile-AGC-Camera-profile.zip` | Native v4 profile for Ajustes → Perfis; neutral Photo, Portrait and Night adjustments. |
 
-CI builds both GCam files from the [privacy-reviewed v15 reference](data/gcam-92-v14.xml), not the old 453-key subset. Each file has **1,320 typed preferences**. Only normal-video capture settings differ between them; both preserve the source’s lens/photo tuning and stabilization, disable camera sounds and do not opt into geotagging. Structural and digest checks passed; **actual recording, 60 fps and HDR still need confirmation on the S23**. See [the video test](docs/gcam-video.md) and [what was sanitized](docs/public-reference.md). Keep your own original for an exact rollback.
+The photo-first layout contains these files, the optional Adobe XMP and a manifest marked `photo-first-v1`. It is not the older partial four-file layout. CI builds GCam from the [privacy-reviewed v15 reference](data/gcam-92-v14.xml), preserving **1,318 typed preferences**, lens/photo tuning and baseline video controls. It no longer forces FHD30 HDR or FHD60 SDR. Dedicated video recording is outside this profile's tuning scope. Structural checks do not establish phone capture quality or HDR support. See [what was sanitized](docs/public-reference.md); keep your own original for an exact rollback.
 
 ## Try it
 
@@ -18,7 +17,7 @@ For the [standalone app](https://play.google.com/store/apps/details?id=com.agc.g
 
 ### Generate and verify a faithful GCam file
 
-Use Bun 1.4.4 and run `bun install --frozen-lockfile` once. Pass an original from this GCam build. To preserve it exactly, use no overlay. The sound-only option `--overlay sounds-off` does nothing if both original switches are already disabled. For normal video, the [FHD30 HDR and FHD60 SDR options](docs/gcam-video.md) request verified controls from the target APK, without claiming a phone-verified output. Private-source mode uses only the original you pass. It does not reserialize unrelated XML.
+Use Bun 1.4.4 and run `bun install --frozen-lockfile` once. Pass an original from this GCam build. To preserve it exactly, use no overlay. The sound-only option `--overlay sounds-off` does nothing if both original switches are already disabled. Private-source mode uses only the original you pass. It does not reserialize unrelated XML.
 
 ```sh
 # Create a new private directory outside the checkout; generation never overwrites.
@@ -29,7 +28,17 @@ bun run validate --target gcam --source "$SOURCE" --out "$OUT"
 cmp "$SOURCE" "$OUT/Basile-S23-AGC9.2-V14.agc"
 ```
 
-For a separate muted copy, choose a fresh directory and supply `--overlay sounds-off` to both commands. Never commit the input or output: full-fidelity copies intentionally retain all original metadata. The CI-built candidates use the separately audited public reference. The supplied v15 matched byte-for-byte with **both** options. This proves file identity, not that photo or video saved on the phone. See the [crash comparison and evidence](docs/gcam-capture.md).
+For a separate muted copy, choose a fresh directory and supply `--overlay sounds-off` to both commands. Never commit the input or output: full-fidelity copies intentionally retain all original metadata. The CI-built photo-first config use the separately audited public reference. The supplied v15 matched byte-for-byte with **both** options. This proves file identity, not that photo or video saved on the phone. See the [crash comparison and evidence](docs/gcam-capture.md).
+
+### Night Sight and per-shot control
+
+Automatic low-light assistance should remain optional for each shot. The source's `camera.promote_night_sight=true` is preserved, but a Night Sight recommendation is not proof that this V14 build automatically activates it on the S23. This release does not force Night Sight mode or add an unverified activation flag. Use the app's visible Night Sight/Photo controls to choose the mode; an automatic per-shot override still needs confirmation in the exact installed build. Preserve the working photo tuning while checking that behavior.
+
+### Location metadata is an individual choice
+
+The public config keeps `pref_camera_recordlocation_key` as string `"0"`: importing a shared preset must not opt other people into location recording. To record location on your own phone, enable **Save location / Salvar local** in GCam settings and grant the camera app Android location permission (including precise location if desired). Check a newly saved photo's details; enabling the setting does not backfill earlier photos. Sharing photos may expose their GPS metadata.
+
+For an existing private export that already has string `pref_camera_recordlocation_key="1"`, the `--source` workflow above preserves it byte-for-byte; `--overlay sounds-off` changes only the two shutter-sound values and also preserves that choice. Keep both original and generated files outside this checkout. No new public geotag-enabled build is provided.
 
 ## Generate, modify, verify the public release artifacts
 

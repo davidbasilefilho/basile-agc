@@ -13,9 +13,21 @@ export const legacyAssetNames = [
 /** Historical releases with the native profile but only one GCam preset. */
 export const nativeAssetNames = [...legacyAssetNames, "Basile-AGC-Camera-profile.zip"] as const;
 /** Only these generated artifacts may be attached by the current publisher. */
-export const assetNames = [...nativeAssetNames, "Basile-S23-AGC9.2-V14-FHD60-SDR.agc"] as const;
-const formats = { legacy: legacyAssetNames, native: nativeAssetNames, video: assetNames } as const;
+export const assetNames = nativeAssetNames;
+/** Historical five-file releases with the optional SDR preset. */
+export const videoAssetNames = [
+  ...nativeAssetNames,
+  "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
+] as const;
+const formats = {
+  legacy: legacyAssetNames,
+  native: nativeAssetNames,
+  video: videoAssetNames,
+  photo: assetNames,
+} as const;
 const formatNames = {
+  photo:
+    "Includes the photo-first GCam camera preset, the native standalone AGC Camera profile ZIP, and an optional photo-look XMP. Video output on the S23 has not been physically verified.",
   legacy: "Includes the GCam camera preset and an experimental, photo-only standalone XMP.",
   native:
     "Includes the GCam camera preset, an experimental native standalone AGC Camera profile ZIP, and an optional photo-look XMP.",
@@ -75,7 +87,7 @@ export function releaseNotes(
   tag: string,
   sha: string,
   pre: boolean,
-  format: keyof typeof formats = "video",
+  format: keyof typeof formats = "photo",
 ) {
   const includes = formatNames[format];
   return {
@@ -221,9 +233,15 @@ export function prune(
       // Derive schema from the exact commit's tree, never from remote asset names,
       // tag dates, or a missing-blob error. Unknown tree layouts remain untouched.
       const historicalNames = yield* repo.generatedAssetNames(previewSha);
-      const format = (["video", "native", "legacy"] as const).find((key) =>
-        exactNames(historicalNames, formats[key]),
-      );
+      const format = exactNames(historicalNames, videoAssetNames)
+        ? "video"
+        : exactNames(historicalNames, legacyAssetNames)
+          ? "legacy"
+          : exactNames(historicalNames, nativeAssetNames)
+            ? (yield* repo.photoFirstSchema(previewSha))
+              ? "photo"
+              : "native"
+            : undefined;
       if (!format) continue;
       const historicalAssets = formats[format];
       const notes = releaseNotes(tag, previewSha, true, format);

@@ -18,7 +18,6 @@ type Atomic = string | string[];
 type Preferences = Map<string, [string, Atomic]>;
 const names = [
   "Basile-S23-AGC9.2-V14.agc",
-  "Basile-S23-AGC9.2-V14-FHD60-SDR.agc",
   "Basile-AGC-Camera-photo-look.xmp",
   "Basile-AGC-Camera-profile.zip",
 ] as const;
@@ -124,7 +123,6 @@ function verifyPreferences(
   input: string,
   baseline: Preferences,
   profile: { name: string; jpegQuality: number },
-  hdr: boolean,
 ) {
   const seen = parsePreferences(input);
   const canonical: Preferences = new Map();
@@ -137,33 +135,27 @@ function verifyPreferences(
           : value;
     canonical.set(key, [type, photoOverride]);
   }
-  const rate = hdr ? "FPS_30" : "FPS_60";
   for (const [key, value] of [
     ["pref_camera_sounds_key", "0"],
     ["pref_camera_single_shot_sound_key", "0"],
-    ["pref_video_resolution", "RES_1080P"],
-    ["pref_video_fps_p2018_key", rate],
-    ["pref_video_amethyst_key", hdr ? "1" : "0"],
-    ["pref_video_fps_key", rate],
   ] as const)
     canonical.set(key, ["string", value]);
   check(isDeepStrictEqual([...canonical], [...seen]), "Typed settings or order did not roundtrip");
   return seen.size;
 }
 
-/** Independently parse both preference maps and standalone profiles and verify all asset digests. */
+/** Independently parse the preference map and standalone profiles and verify all asset digests. */
 export function verifyArtifacts(root: string) {
   return Effect.gen(function* () {
-    const [baseText, profileText, manifestText, hdr, sdr, xmp, archive] = yield* Effect.all(
+    const [baseText, profileText, manifestText, agc, xmp, archive] = yield* Effect.all(
       [
         file(join(root, "data/gcam-92-v14.xml")),
         file(join(root, "data/profile.json")),
         file(join(root, "generated/manifest.json")),
         file(join(root, "generated", names[0])),
         file(join(root, "generated", names[1])),
-        file(join(root, "generated", names[2])),
         Effect.tryPromise({
-          try: () => readFile(join(root, "generated", names[3])),
+          try: () => readFile(join(root, "generated", names[2])),
           catch: toError,
         }),
       ],
@@ -175,23 +167,27 @@ export function verifyArtifacts(root: string) {
         const profile = JSON.parse(profileText) as { name: string; jpegQuality: number };
         const report = JSON.parse(manifestText) as {
           schemaVersion: unknown;
+          releaseLayout: unknown;
           profile: unknown;
           outputs: {
             file: string;
             sha256: string;
             physicalDeviceVerified: boolean;
             videoRequest?: unknown;
+            videoPolicy?: unknown;
           }[];
         };
         check(
-          report.schemaVersion === 3 && isDeepStrictEqual(profile, report.profile),
+          report.schemaVersion === 4 &&
+            report.releaseLayout === "photo-first-v1" &&
+            isDeepStrictEqual(profile, report.profile),
           "Manifest profile/schema mismatch",
         );
         check(
           Array.isArray(report.outputs) && report.outputs.length === names.length,
           "Wrong output count",
         );
-        const entries = [hdr, sdr, xmp, archive] as const;
+        const entries = [agc, xmp, archive] as const;
         for (const [index, name] of names.entries()) {
           const item = report.outputs.find((r) => r.file === name);
           const bytes = entries[index];
@@ -199,26 +195,17 @@ export function verifyArtifacts(root: string) {
             item && item.physicalDeviceVerified === false && bytes !== undefined,
             "Unexpected device claim or missing output",
           );
-          const videoRequest =
-            index < 2
-              ? {
-                  mode: "normal",
-                  resolution: "FHD",
-                  fps: index === 0 ? 30 : 60,
-                  hdr10Bit: index === 0,
-                }
-              : undefined;
-          check(isDeepStrictEqual(item.videoRequest, videoRequest), "Video request mismatch");
+          check(
+            item.videoRequest === undefined &&
+              item.videoPolicy === (index === 0 ? "preserve-source" : undefined),
+            "Video policy mismatch",
+          );
           check(
             item.sha256 === createHash("sha256").update(bytes).digest("hex"),
             "Artifact digest mismatch",
           );
         }
-        const preferenceCount = verifyPreferences(hdr, expected, profile, true);
-        check(
-          verifyPreferences(sdr, expected, profile, false) === preferenceCount,
-          "Candidate setting counts differ",
-        );
+        const preferenceCount = verifyPreferences(agc, expected, profile);
         const preset = xml(xmp);
         check(preset.name === xmpNs + "xmpmeta", "Bad XMP root");
         const descend = (node: Xml | undefined, key: string) =>
@@ -288,7 +275,7 @@ if (import.meta.main) {
         },
         onSuccess: (count) =>
           console.log(
-            `Independent XML and digest checks passed: ${count} typed preferences per candidate plus photo XMP and native v4 profile ZIP.`,
+            `Independent XML and digest checks passed: ${count} typed preferences in the photo-first config plus photo XMP and native v4 profile ZIP.`,
           ),
       }),
     ),
