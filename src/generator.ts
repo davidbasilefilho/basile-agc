@@ -6,6 +6,7 @@ import { SaxesParser } from "saxes";
 import { configRevision, gcamArtifactName } from "./config-revision";
 import { fromOriginal } from "./lossless";
 import { nativeProfileZip } from "./native-profile";
+import { adjustPhotoPreferences } from "./photo-adjustments";
 import { standaloneXmp } from "./standalone";
 
 /** Options shared by the two output adapters. JPEG quality applies only to GCam. */
@@ -54,7 +55,9 @@ function escapeXml(text: string) {
 }
 
 function loadGcam(profile: Profile) {
-  const source = readFileSync(new URL("../data/gcam-92-v14.xml", import.meta.url));
+  const source = adjustPhotoPreferences(
+    readFileSync(new URL("../data/gcam-92-v14.xml", import.meta.url)),
+  );
   const changeName = profile.name !== "Basile";
   const changeQuality = profile.jpegQuality !== 97;
   if (!changeName && !changeQuality) return source;
